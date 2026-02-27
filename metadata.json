@@ -1,0 +1,7 @@
+{
+  "name": "FleetCheck - Gestão de Frota",
+  "description": "Sistema completo de gestão de frota com checklists semanais, registro de avarias, logs de abastecimento e painel de supervisão em tempo real.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
