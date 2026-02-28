@@ -1,1 +1,106 @@
 @import "tailwindcss";
+
+@theme {
+  --color-primary-50: #ebfcf9;
+  --color-primary-100: #cefaed;
+  --color-primary-200: #a1f3de;
+  --color-primary-300: #66e4ca;
+  --color-primary-400: #33cdb0;
+  --color-primary-500: #15a085; /* Brand Teal */
+  --color-primary-600: #108c74;
+  --color-primary-700: #116f5e;
+  --color-primary-800: #12594e;
+  --color-primary-900: #134a42;
+  --color-primary-950: #062d29;
+
+  --color-secondary-50: #f6f7f8;
+  --color-secondary-100: #ecedef;
+  --color-secondary-200: #d4d8db;
+  --color-secondary-300: #b3babc;
+  --color-secondary-400: #929a9e; /* Brand Grey */
+  --color-secondary-500: #7b8489;
+  --color-secondary-600: #656d72;
+  --color-secondary-700: #545a5e;
+  --color-secondary-800: #464a4d;
+  --color-secondary-900: #3d3f42;
+  --color-secondary-950: #262729;
+
+  --color-brand: var(--color-primary-500);
+  --color-accent: var(--color-secondary-400);
+
+  /* Shadows for elegant look */
+  --shadow-elegant: 0 10px 40px -10px rgba(21, 160, 133, 0.15), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: #f8fafc;
+    color: #1e293b;
+    overflow-x: hidden;
+  }
+  
+  /* Fluid scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-secondary-300);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-secondary-400);
+  }
+
+  /* Selection style */
+  ::selection {
+    background-color: var(--color-primary-200);
+    color: var(--color-primary-900);
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-glass;
+  }
+  .glass-dark {
+    @apply bg-slate-900/70 backdrop-blur-md border border-slate-700/50 shadow-glass;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

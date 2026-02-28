@@ -1,89 +1,55 @@
 import React, { useState } from 'react';
 import { supabase, isSupabaseConfigured } from './supabase';
-import { useAuth } from './AuthContext';
-import { LogIn, UserPlus, AlertCircle } from 'lucide-react';
+import { LogIn, AlertCircle, Lock, User } from 'lucide-react';
 import { motion } from 'motion/react';
-import { User } from '@supabase/supabase-js';
+import logoVidronox from '../medias/logo_vidronox.jpg';
+
+// Converts a username to an internal email format for Supabase Auth
+const usernameToEmail = (username: string) =>
+  `${username.trim().toLowerCase().replace(/\s+/g, '.')}@fleetcheck.local`;
 
 export const Login: React.FC = () => {
-  const { setMockAuth } = useAuth();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<'driver' | 'supervisor'>('driver');
-  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Mock Login Check
-    if (email === 'admin' && password === '123456') {
-      const mockUser: User = {
-        id: 'mock-id',
-        email: 'admin@fleetcheck.com',
-        app_metadata: {},
-        user_metadata: {},
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-      } as User;
-      
-      const mockProfile = {
-        id: 'mock-id',
-        full_name: 'Administrador Mock',
-        role: 'supervisor' as const,
-        created_at: new Date().toISOString(),
-      };
-
-      setMockAuth(mockUser, mockProfile);
-      return;
-    }
-
-    if (!isSupabaseConfigured) {
-      setError('O Supabase não está configurado. Verifique as variáveis de ambiente ou use as credenciais de teste (admin / 123456).');
-      return;
-    }
     setLoading(true);
     setError(null);
 
     try {
-      if (isSignUp) {
-        const { data: { user }, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+      if (!isSupabaseConfigured) {
+        throw new Error('Supabase não configurado. Verifique as variáveis de ambiente.');
+      }
 
-        if (signUpError) throw signUpError;
+      const email = usernameToEmail(username);
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([{ id: user.id, full_name: fullName, role }]);
-
-          if (profileError) throw profileError;
+      if (signInError) {
+        if (signInError.message.includes('Invalid login credentials')) {
+          throw new Error('Usuário ou senha incorretos.');
         }
-      } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (signInError) throw signInError;
+        throw signInError;
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Erro ao fazer login.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-4">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-zinc-200 p-8"
+    <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-900 to-black p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-800 p-8 md:p-10"
       >
         {!isSupabaseConfigured && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-xl flex flex-col gap-2 text-amber-700 text-xs">
@@ -91,93 +57,73 @@ export const Login: React.FC = () => {
               <AlertCircle size={14} />
               Configuração Necessária
             </div>
-            <p>O Supabase não foi configurado. Para o sistema funcionar, você precisa definir as variáveis <strong>VITE_SUPABASE_URL</strong> e <strong>VITE_SUPABASE_ANON_KEY</strong> nos Secrets do AI Studio.</p>
+            <p>O Supabase não foi configurado. Defina as variáveis <strong>VITE_SUPABASE_URL</strong> e <strong>VITE_SUPABASE_ANON_KEY</strong>.</p>
           </div>
         )}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center mb-4">
-            <LogIn className="text-white w-6 h-6" />
+
+        <div className="flex flex-col items-center mb-10">
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 overflow-hidden shadow-lg shadow-black/40 transform transition-transform hover:scale-105 bg-slate-800 border border-slate-700 p-1">
+            <img src={logoVidronox} alt="Vidronox Logo" className="w-full h-full object-contain mix-blend-screen" />
           </div>
-          <h1 className="text-2xl font-bold text-zinc-900">FleetCheck</h1>
-          <p className="text-zinc-500 text-sm">Gestão inteligente de frotas</p>
+          <h1 className="text-4xl font-black text-white mb-2 text-center">
+            Bem-vindo ao FleetCheck
+          </h1>
+          <p className="text-slate-400 text-center">
+            Insira seu usuário e senha para acessar.
+          </p>
         </div>
 
-        <form onSubmit={handleAuth} className="space-y-4">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2 text-red-600 text-sm">
-              <AlertCircle size={16} />
-              {error}
+        {error && (
+          <div className="mb-5 bg-red-50 text-red-600 p-4 rounded-xl text-sm font-medium border border-red-100 flex items-center gap-3">
+            <div className="p-1 bg-red-100 rounded-full shrink-0">
+              <AlertCircle size={16} className="text-red-600" />
             </div>
-          )}
+            {error}
+          </div>
+        )}
 
-          {isSignUp && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Nome Completo</label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-                  placeholder="Seu nome"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Perfil</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as any)}
-                  className="w-full px-4 py-2 rounded-lg border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-                >
-                  <option value="driver">Motorista</option>
-                  <option value="supervisor">Supervisor</option>
-                </select>
-              </div>
-            </>
-          )}
-
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">E-mail ou Usuário</label>
-            <input
-              type="text"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-              placeholder="seu@email.com ou 'admin'"
-            />
+            <label className="block text-sm font-semibold text-slate-300 mb-1.5">Usuário</label>
+            <div className="relative">
+              <User size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full pl-11 pr-4 py-4 bg-slate-800 border border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all font-medium text-white placeholder:text-slate-500"
+                placeholder="admin"
+                autoComplete="username"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">Senha</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-              placeholder="••••••••"
-            />
+            <label className="block text-sm font-semibold text-slate-300 mb-1.5">Senha</label>
+            <div className="relative">
+              <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-11 pr-4 py-4 bg-slate-800 border border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all font-medium text-white placeholder:text-slate-500"
+                placeholder="••••••••"
+                autoComplete="current-password"
+              />
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full bg-primary-600 text-white font-bold py-4 rounded-xl hover:bg-primary-700 focus:ring-4 focus:ring-primary-500/30 transition-all shadow-lg shadow-primary-500/30 text-lg flex items-center justify-center gap-2 disabled:opacity-70"
           >
-            {loading ? 'Carregando...' : isSignUp ? 'Criar Conta' : 'Entrar'}
+            <LogIn size={20} />
+            {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
-          >
-            {isSignUp ? 'Já tem uma conta? Entre aqui' : 'Não tem conta? Cadastre-se'}
-          </button>
-        </div>
       </motion.div>
     </div>
   );

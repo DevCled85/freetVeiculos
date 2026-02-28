@@ -23,6 +23,7 @@ export type Vehicle = {
   plate: string;
   mileage: number;
   status: 'active' | 'maintenance' | 'inactive';
+  current_driver?: string;
   created_at: string;
 };
 

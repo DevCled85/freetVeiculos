@@ -11,11 +11,12 @@ import { FuelLogForm } from './components/FuelLogForm';
 const AppContent: React.FC = () => {
   const { user, profile, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedDriverVehicle, setSelectedDriverVehicle] = useState<string | undefined>();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
-        <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -27,11 +28,17 @@ const AppContent: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard
+          onNavigate={setActiveTab}
+          onVehicleSelect={(id) => {
+            setSelectedDriverVehicle(id);
+            setActiveTab('checklist');
+          }}
+        />;
       case 'vehicles':
         return <VehicleList />;
       case 'checklist':
-        return <ChecklistForm />;
+        return <ChecklistForm initialVehicleId={selectedDriverVehicle} />;
       case 'damages':
         return <DamageReport />;
       case 'fuel':

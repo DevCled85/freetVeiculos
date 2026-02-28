@@ -1,0 +1,3 @@
+src/components/Dashboard.tsx(449,10): error TS2741: Property 'children' is missing in type '{ show: any; onClose: () => any; }' but required in type '{ show: boolean; onClose: () => void; children: React.ReactNode; }'.
+src/components/Dashboard.tsx(487,10): error TS2741: Property 'children' is missing in type '{ show: boolean; onClose: () => any; }' but required in type '{ show: boolean; onClose: () => void; children: React.ReactNode; }'.
+src/components/Dashboard.tsx(525,10): error TS2741: Property 'children' is missing in type '{ show: boolean; onClose: () => any; }' but required in type '{ show: boolean; onClose: () => void; children: React.ReactNode; }'.

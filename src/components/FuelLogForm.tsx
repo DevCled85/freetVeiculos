@@ -103,13 +103,13 @@ export const FuelLogForm: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-          <History size={20} className="text-zinc-400" />
+        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <History size={20} className="text-slate-400" />
           Histórico Recente
         </h3>
         <button 
           onClick={() => setIsAdding(true)}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-emerald-100 transition-all"
+          className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-primary-100 transition-all"
         >
           <Plus size={20} />
           Registrar Abastecimento
@@ -123,45 +123,45 @@ export const FuelLogForm: React.FC = () => {
             <motion.div
               layout
               key={log.id}
-              className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex flex-col md:flex-row gap-6 items-center"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-elegant flex flex-col md:flex-row gap-6 items-center"
             >
-              <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl shrink-0">
+              <div className="p-4 bg-primary-50 text-primary-600 rounded-2xl shrink-0">
                 <Fuel size={32} />
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-1">
-                  <h4 className="text-lg font-bold text-zinc-900">
+                  <h4 className="text-lg font-bold text-slate-900">
                     {log.vehicles?.brand} {log.vehicles?.model}
                   </h4>
-                  <span className="text-xs text-zinc-400">
+                  <span className="text-xs text-slate-400">
                     {new Date(log.date).toLocaleDateString('pt-BR')}
                   </span>
                 </div>
-                <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest mb-4">
+                <p className="text-sm text-slate-500 font-medium uppercase tracking-widest mb-4">
                   {log.vehicles?.plate}
                 </p>
 
                 <div className="grid grid-cols-3 gap-8">
                   <div className="flex items-center gap-2">
-                    <Droplets size={16} className="text-zinc-400" />
+                    <Droplets size={16} className="text-slate-400" />
                     <div>
-                      <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Litros</p>
-                      <p className="text-sm font-bold text-zinc-700">{log.liters}L</p>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Litros</p>
+                      <p className="text-sm font-bold text-slate-700">{log.liters}L</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <DollarSign size={16} className="text-zinc-400" />
+                    <DollarSign size={16} className="text-slate-400" />
                     <div>
-                      <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Valor</p>
-                      <p className="text-sm font-bold text-zinc-700">R$ {log.value.toFixed(2)}</p>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Valor</p>
+                      <p className="text-sm font-bold text-slate-700">R$ {log.value.toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <TrendingUp size={16} className="text-zinc-400" />
+                    <TrendingUp size={16} className="text-slate-400" />
                     <div>
-                      <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">KM</p>
-                      <p className="text-sm font-bold text-zinc-700">{log.mileage.toLocaleString()}</p>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">KM</p>
+                      <p className="text-sm font-bold text-slate-700">{log.mileage.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
@@ -169,9 +169,9 @@ export const FuelLogForm: React.FC = () => {
             </motion.div>
           ))
         ) : (
-          <div className="bg-white p-12 rounded-3xl border border-zinc-200 border-dashed text-center">
-            <Fuel size={48} className="text-zinc-200 mx-auto mb-4" />
-            <p className="text-zinc-500 font-medium">Nenhum abastecimento registrado</p>
+          <div className="bg-white p-12 rounded-3xl border border-slate-200 border-dashed text-center">
+            <Fuel size={48} className="text-slate-200 mx-auto mb-4" />
+            <p className="text-slate-500 font-medium">Nenhum abastecimento registrado</p>
           </div>
         )}
       </div>
@@ -195,20 +195,20 @@ export const FuelLogForm: React.FC = () => {
             >
               <div className="p-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-zinc-900">Registrar Abastecimento</h3>
-                  <button onClick={() => setIsAdding(false)} className="text-zinc-400 hover:text-zinc-600">
+                  <h3 className="text-xl font-bold text-slate-900">Registrar Abastecimento</h3>
+                  <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600">
                     <X size={24} />
                   </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Veículo</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Veículo</label>
                     <select
                       required
                       value={newLog.vehicle_id}
                       onChange={(e) => setNewLog({...newLog, vehicle_id: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                     >
                       <option value="">Selecione um veículo</option>
                       {vehicles.map(v => (
@@ -219,48 +219,48 @@ export const FuelLogForm: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Quilometragem</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Quilometragem</label>
                       <input
                         type="number"
                         required
                         value={newLog.mileage}
                         onChange={(e) => setNewLog({...newLog, mileage: parseInt(e.target.value)})}
-                        className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Data</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Data</label>
                       <input
                         type="date"
                         required
                         value={newLog.date}
                         onChange={(e) => setNewLog({...newLog, date: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Litros</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Litros</label>
                       <input
                         type="number"
                         step="0.01"
                         required
                         value={newLog.liters}
                         onChange={(e) => setNewLog({...newLog, liters: parseFloat(e.target.value)})}
-                        className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Valor Total (R$)</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Valor Total (R$)</label>
                       <input
                         type="number"
                         step="0.01"
                         required
                         value={newLog.value}
                         onChange={(e) => setNewLog({...newLog, value: parseFloat(e.target.value)})}
-                        className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                       />
                     </div>
                   </div>
@@ -269,7 +269,7 @@ export const FuelLogForm: React.FC = () => {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2"
+                      className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary-100 flex items-center justify-center gap-2"
                     >
                       {loading ? 'Salvando...' : (
                         <>
