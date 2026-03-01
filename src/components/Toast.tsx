@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
 
-export type ToastType = 'success' | 'error' | 'info';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 export interface ToastMessage {
     id: string;
@@ -20,6 +20,7 @@ const iconMap = {
     success: CheckCircle2,
     error: AlertTriangle,
     info: Info,
+    warning: AlertTriangle,
 };
 
 const colorMap = {
@@ -37,6 +38,11 @@ const colorMap = {
         bg: 'bg-white border-l-4 border-primary-500',
         icon: 'text-primary-500',
         bar: 'bg-primary-500',
+    },
+    warning: {
+        bg: 'bg-white border-l-4 border-amber-500',
+        icon: 'text-amber-500',
+        bar: 'bg-amber-500',
     },
 };
 

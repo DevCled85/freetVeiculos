@@ -255,7 +255,7 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
                         </div>
                       )}
                       <div className="text-left">
-                        <p className="font-bold text-white capitalize">{v.brand.toLowerCase()} {v.model.toLowerCase()}</p>
+                        <p className="font-bold text-white capitalize">{v.model.toLowerCase()} <span className="text-sm font-normal text-slate-400">/ {v.brand.toLowerCase()}</span></p>
                         <p className="text-sm text-slate-400 uppercase tracking-widest">{v.plate}</p>
                       </div>
                     </div>
@@ -370,6 +370,6 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </div >
   );
 };

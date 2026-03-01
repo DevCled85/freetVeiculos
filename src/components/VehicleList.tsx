@@ -15,10 +15,44 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast, ToastContainer } from './Toast';
 
+const PREDEFINED_COLORS = [
+  'Branco',
+  'Preto',
+  'Prata',
+  'Cinza',
+  'Vermelho',
+  'Azul',
+  'Outro'
+];
+
+const CAR_BRANDS: Record<string, string[]> = {
+  'Audi': ['A3', 'A4', 'A5', 'Q3', 'Q5', 'Q7', 'e-tron'],
+  'BMW': ['Série 3', 'X1', 'X3', 'X5', 'iX', 'Série 1'],
+  'BYD': ['Dolphin', 'Dolphin Mini', 'Song Plus', 'Seal', 'Yuan Plus'],
+  'Caoa Chery': ['Tiggo 5x', 'Tiggo 7', 'Tiggo 8', 'Arrizo 6', 'iCar'],
+  'Chevrolet': ['Onix', 'Onix Plus', 'Tracker', 'Montana', 'S10', 'Equinox', 'Spin', 'Cruze', 'Silverado'],
+  'Citroën': ['C3', 'C3 Aircross', 'C4 Cactus', 'Jumpy'],
+  'Fiat': ['Mobi', 'Argo', 'Cronos', 'Pulse', 'Fastback', 'Strada', 'Toro', 'Fiorino', 'Ducato'],
+  'Ford': ['Ranger', 'Maverick', 'Bronco Sport', 'Mustang', 'Transit', 'Territory'],
+  'GWM': ['Haval H6', 'Ora 03'],
+  'Honda': ['City', 'City Hatchback', 'HR-V', 'ZR-V', 'CR-V', 'Civic'],
+  'Hyundai': ['HB20', 'HB20S', 'Creta', 'Tucson'],
+  'Jeep': ['Renegade', 'Compass', 'Commander', 'Gladiator', 'Wrangler'],
+  'Kia': ['Sportage', 'Niro', 'Stonic', 'Carnival'],
+  'Mitsubishi': ['L200 Triton', 'Eclipse Cross', 'Pajero Sport'],
+  'Nissan': ['Kicks', 'Versa', 'Sentra', 'Frontier'],
+  'Peugeot': ['208', '2008', 'Partner Rapid', 'Expert'],
+  'Renault': ['Kwid', 'Stepway', 'Logan', 'Duster', 'Oroch', 'Master', 'Megane E-Tech'],
+  'Toyota': ['Yaris', 'Yaris Hatch', 'Corolla', 'Corolla Cross', 'Hilux', 'SW4', 'RAV4'],
+  'Volkswagen': ['Polo', 'Virtus', 'Nivus', 'T-Cross', 'Taos', 'Saveiro', 'Amarok', 'Jetta GLI', 'Gol', 'Voyage'],
+  'Volvo': ['EX30', 'XC40', 'C40', 'XC60', 'XC90'],
+  'Outra': ['Outro']
+};
+
 const MOCK_VEHICLES: Vehicle[] = [
-  { id: '1', brand: 'Toyota', model: 'Corolla', year: 2022, plate: 'ABC-1234', mileage: 15000, status: 'active', created_at: '' },
-  { id: '2', brand: 'Ford', model: 'Ranger', year: 2021, plate: 'XYZ-9876', mileage: 45000, status: 'maintenance', created_at: '' },
-  { id: '3', brand: 'Volkswagen', model: 'Gol', year: 2020, plate: 'KJH-4422', mileage: 80000, status: 'active', created_at: '' },
+  { id: '1', brand: 'Toyota', model: 'Corolla', year: 2022, plate: 'ABC-1234', mileage: 15000, color: 'Branco', status: 'active', created_at: '' },
+  { id: '2', brand: 'Ford', model: 'Ranger', year: 2021, plate: 'XYZ-9876', mileage: 45000, color: 'Prata', status: 'maintenance', created_at: '' },
+  { id: '3', brand: 'Volkswagen', model: 'Gol', year: 2020, plate: 'KJH-4422', mileage: 80000, color: 'Preto', status: 'active', created_at: '' },
 ];
 
 export const VehicleList: React.FC = () => {
@@ -35,6 +69,7 @@ export const VehicleList: React.FC = () => {
     year: new Date().getFullYear(),
     plate: '',
     mileage: 0,
+    color: 'Branco',
     status: 'active' as const
   });
   const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
@@ -93,7 +128,7 @@ export const VehicleList: React.FC = () => {
       setVehicles(updated);
       localStorage.setItem('mock_vehicles', JSON.stringify(updated));
       setIsAdding(false);
-      setNewVehicle({ brand: '', model: '', year: new Date().getFullYear(), plate: '', mileage: 0, status: 'active' });
+      setNewVehicle({ brand: '', model: '', year: new Date().getFullYear(), plate: '', mileage: 0, color: 'Branco', status: 'active' });
       setNewPhotoFile(null);
       return;
     }
@@ -108,7 +143,7 @@ export const VehicleList: React.FC = () => {
     if (!error) {
       setIsAdding(false);
       fetchVehicles();
-      setNewVehicle({ brand: '', model: '', year: new Date().getFullYear(), plate: '', mileage: 0, status: 'active' });
+      setNewVehicle({ brand: '', model: '', year: new Date().getFullYear(), plate: '', mileage: 0, color: 'Branco', status: 'active' });
       setNewPhotoFile(null);
       addToast('Veículo cadastrado com sucesso!', 'success');
     } else {
@@ -141,6 +176,7 @@ export const VehicleList: React.FC = () => {
         year: editingVehicle.year,
         plate: editingVehicle.plate,
         mileage: editingVehicle.mileage,
+        color: editingVehicle.color,
         status: editingVehicle.status,
         photo_url
       })
@@ -238,8 +274,8 @@ export const VehicleList: React.FC = () => {
                   </div>
                 )}
                 <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-sm ${v.status === 'active' ? 'bg-primary-500/80 text-white' :
-                    v.status === 'maintenance' ? 'bg-amber-500/80 text-white' :
-                      'bg-red-500/80 text-white'
+                  v.status === 'maintenance' ? 'bg-amber-500/80 text-white' :
+                    'bg-red-500/80 text-white'
                   }`}>
                   {v.status === 'active' ? <CheckCircle2 size={12} /> :
                     v.status === 'maintenance' ? <AlertCircle size={12} /> : <XCircle size={12} />}
@@ -247,7 +283,7 @@ export const VehicleList: React.FC = () => {
                 </div>
               </div>
               <div className="p-5">
-                <h3 className="text-lg font-bold text-white">{v.brand} {v.model}</h3>
+                <h3 className="text-lg font-bold text-white capitalize">{v.model}<span className="text-sm font-normal text-slate-400">/{v.brand}</span></h3>
                 <p className="text-slate-500 text-sm font-medium uppercase tracking-widest mt-1">{v.plate}</p>
 
                 <div className="grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-slate-800">
@@ -306,29 +342,41 @@ export const VehicleList: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Marca</label>
-                      <input
-                        type="text"
+                      <select
                         required
                         value={editingVehicle ? editingVehicle.brand : newVehicle.brand}
-                        onChange={(e) => editingVehicle
-                          ? setEditingVehicle({ ...editingVehicle, brand: e.target.value })
-                          : setNewVehicle({ ...newVehicle, brand: e.target.value })}
-                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
-                        placeholder="Ex: Toyota"
-                      />
+                        onChange={(e) => {
+                          const brand = e.target.value;
+                          if (editingVehicle) {
+                            setEditingVehicle({ ...editingVehicle, brand, model: '' });
+                          } else {
+                            setNewVehicle({ ...newVehicle, brand, model: '' });
+                          }
+                        }}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all custom-select"
+                      >
+                        <option value="" disabled hidden>Escolha a marca</option>
+                        {Object.keys(CAR_BRANDS).map(brand => (
+                          <option key={brand} value={brand}>{brand}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Modelo</label>
-                      <input
-                        type="text"
+                      <select
                         required
                         value={editingVehicle ? editingVehicle.model : newVehicle.model}
                         onChange={(e) => editingVehicle
                           ? setEditingVehicle({ ...editingVehicle, model: e.target.value })
                           : setNewVehicle({ ...newVehicle, model: e.target.value })}
-                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
-                        placeholder="Ex: Hilux"
-                      />
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all custom-select"
+                        disabled={!(editingVehicle ? editingVehicle.brand : newVehicle.brand)}
+                      >
+                        <option value="" disabled hidden>Escolha o modelo</option>
+                        {(CAR_BRANDS[editingVehicle ? editingVehicle.brand : newVehicle.brand] || []).map(model => (
+                          <option key={model} value={model}>{model}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -358,17 +406,33 @@ export const VehicleList: React.FC = () => {
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Quilometragem</label>
-                    <input
-                      type="number"
-                      required
-                      value={editingVehicle ? editingVehicle.mileage : newVehicle.mileage}
-                      onChange={(e) => editingVehicle
-                        ? setEditingVehicle({ ...editingVehicle, mileage: parseInt(e.target.value) })
-                        : setNewVehicle({ ...newVehicle, mileage: parseInt(e.target.value) })}
-                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Quilometragem</label>
+                      <input
+                        type="number"
+                        required
+                        value={editingVehicle ? editingVehicle.mileage : newVehicle.mileage}
+                        onChange={(e) => editingVehicle
+                          ? setEditingVehicle({ ...editingVehicle, mileage: parseInt(e.target.value) })
+                          : setNewVehicle({ ...newVehicle, mileage: parseInt(e.target.value) })}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Cor</label>
+                      <select
+                        value={editingVehicle ? (editingVehicle.color || 'Branco') : newVehicle.color}
+                        onChange={(e) => editingVehicle
+                          ? setEditingVehicle({ ...editingVehicle, color: e.target.value })
+                          : setNewVehicle({ ...newVehicle, color: e.target.value })}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                      >
+                        {PREDEFINED_COLORS.map(color => (
+                          <option key={color} value={color}>{color}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                   {/* Photo Upload */}
                   <div>

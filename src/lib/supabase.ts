@@ -12,6 +12,7 @@ export type Profile = {
   id: string;
   full_name: string;
   role: 'driver' | 'supervisor';
+  phone?: string | null;
   avatar_url?: string | null;
   created_at: string;
 };
@@ -23,6 +24,7 @@ export type Vehicle = {
   year: number;
   plate: string;
   mileage: number;
+  color?: string;
   status: 'active' | 'maintenance' | 'inactive';
   current_driver?: string;
   created_at: string;

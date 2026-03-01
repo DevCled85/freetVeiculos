@@ -22,6 +22,22 @@ import { supabase, Notification } from './supabase';
 import { ToastContainer, useToast } from '../components/Toast';
 import logoVidronox from '../medias/logo_vidronox.jpg';
 
+// Define Damage type locally for the popup or import if available
+interface VehiclePartial {
+  brand: string;
+  model: string;
+  plate: string;
+}
+
+interface DamagePop {
+  id: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high';
+  status: string;
+  created_at: string;
+  vehicles?: VehiclePartial;
+}
+
 type NavItem = {
   id: string;
   label: string;
@@ -50,6 +66,11 @@ export const Layout: React.FC<{
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const { toasts, addToast, dismissToast } = useToast();
+
+  // Global Damage Popup State (Supervisor Only)
+  const [pendingDamages, setPendingDamages] = useState<DamagePop[]>([]);
+  const [activeDamagePopup, setActiveDamagePopup] = useState<DamagePop | null>(null);
+  const [ignoredDamageIds, setIgnoredDamageIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!profile) return;
@@ -88,6 +109,94 @@ export const Layout: React.FC<{
     // Optimistic update
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     await supabase.from('notifications').update({ read: true }).eq('id', id);
+  };
+
+  // --- Supervisor: Fetch Pending Damages for Global Popup ---
+  useEffect(() => {
+    if (profile?.role !== 'supervisor') return;
+
+    const fetchDamages = async () => {
+      const { data } = await supabase
+        .from('damages')
+        .select('id, description, priority, status, created_at, vehicles(brand, model, plate)')
+        .eq('status', 'pending');
+
+      if (data) {
+        setPendingDamages(data as unknown as DamagePop[]);
+        // If the active popup's damage was resolved elsewhere, close it
+        setActiveDamagePopup(current => {
+          if (current && !data.find(d => d.id === current.id)) return null;
+          return current;
+        });
+      }
+    };
+
+    fetchDamages();
+
+    // Subscribe to damages table to keep pending list fresh
+    const channel = supabase
+      .channel('global_damages')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'damages' }, () => {
+        fetchDamages();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.role]);
+
+  // --- Supervisor: Recurring Timer for Global Popup ---
+  useEffect(() => {
+    if (profile?.role !== 'supervisor' || pendingDamages.length === 0) return;
+
+    // Filter out ignored damages for this cycle
+    const unignoredDamages = pendingDamages.filter(d => !ignoredDamageIds.includes(d.id));
+    if (unignoredDamages.length === 0) return;
+
+    if (activeDamagePopup) return; // Block: Don't start timers if a popup is already open
+
+    // Find the highest priority damage to show first (High > Medium > Low)
+    const sortedDamages = [...unignoredDamages].sort((a, b) => {
+      const pA = a.priority === 'high' ? 3 : a.priority === 'medium' ? 2 : 1;
+      const pB = b.priority === 'high' ? 3 : b.priority === 'medium' ? 2 : 1;
+      return pB - pA;
+    });
+
+    const targetDamage = sortedDamages[0];
+    if (!targetDamage) return;
+
+    let targetDelay = 604800000; // Low priority default: 7 days
+    if (targetDamage.priority === 'medium') targetDelay = 345600000; // 4 days 
+    if (targetDamage.priority === 'high') targetDelay = 86400000; // 1 day
+
+    // Calculate time passed since creation
+    const timePassed = Date.now() - new Date(targetDamage.created_at).getTime();
+    const delayRemaining = Math.max(0, targetDelay - timePassed);
+
+    const timer = setTimeout(() => {
+      setActiveDamagePopup(targetDamage);
+    }, delayRemaining);
+
+    return () => clearTimeout(timer);
+  }, [pendingDamages, activeDamagePopup, profile?.role, ignoredDamageIds]);
+
+  const handleResolveFromPopup = () => {
+    if (!activeDamagePopup) return;
+
+    // Close the popup
+    const damageId = activeDamagePopup.id;
+    setIgnoredDamageIds(prev => [...prev, damageId]);
+    setActiveDamagePopup(null);
+
+    // Navigate to damages tab
+    setActiveTab('damages');
+
+    // Dispatch custom event for DamageReport component to listen to
+    // Use setTimeout to ensure the DamageReport component has time to mount if it wasn't active
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('openDamageDetails', { detail: { id: damageId } }));
+    }, 100);
   };
 
   const filteredNavItems = navItems.filter(item =>
@@ -378,6 +487,86 @@ export const Layout: React.FC<{
         )}
       </AnimatePresence>
 
+      {/* Global Damage Popup Modal */}
+      <AnimatePresence>
+        {activeDamagePopup && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-slate-900 border border-slate-700/60 rounded-3xl shadow-2xl overflow-hidden max-w-md w-full relative"
+            >
+              {/* Decorative top pulse */}
+              <div className={`h-1.5 w-full ${activeDamagePopup.priority === 'high' ? 'bg-red-500' : activeDamagePopup.priority === 'medium' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+
+              <div className="p-6">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className={`p-4 rounded-full flex-shrink-0 animate-pulse ${activeDamagePopup.priority === 'high' ? 'bg-red-500/20 text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]' :
+                    activeDamagePopup.priority === 'medium' ? 'bg-amber-500/20 text-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.4)]' :
+                      'bg-blue-500/20 text-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)]'
+                    }`}>
+                    <AlertTriangle size={36} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-extrabold text-white mb-1 tracking-tight">
+                      Avaria Pendente Repetida
+                    </h3>
+                    <div className="flex flex-col gap-1 mt-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${activeDamagePopup.priority === 'high' ? 'bg-red-100 text-red-600' :
+                        activeDamagePopup.priority === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+                        }`}>
+                        Prioridade {activeDamagePopup.priority === 'high' ? 'Alta' : activeDamagePopup.priority === 'medium' ? 'Média' : 'Baixa'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700/50 mb-6">
+                  <p className="text-sm font-bold text-white uppercase truncate mb-1">
+                    {activeDamagePopup.vehicles?.model} / {activeDamagePopup.vehicles?.brand} ({activeDamagePopup.vehicles?.plate})
+                  </p>
+                  <p className="text-sm text-slate-300 line-clamp-2">"{activeDamagePopup.description}"</p>
+                </div>
+
+                <div className="flex gap-2 text-sm">
+                  <button
+                    onClick={() => {
+                      if (activeDamagePopup) setIgnoredDamageIds(prev => [...prev, activeDamagePopup.id]);
+                      setActiveDamagePopup(null);
+                    }}
+                    className="flex-[0.5] py-2.5 px-3 rounded-xl bg-slate-800 text-slate-300 font-bold border border-slate-700 hover:bg-slate-700 transition-colors"
+                  >
+                    Fechar
+                  </button>
+                  {profile?.phone && (
+                    <a
+                      href={`https://wa.me/55${profile.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`🚨 *Avaria Recorrente Pendente!*\n\n*Veículo:* ${activeDamagePopup.vehicles?.model} / ${activeDamagePopup.vehicles?.brand} (${activeDamagePopup.vehicles?.plate})\n*Prioridade:* ${activeDamagePopup.priority === 'high' ? 'Alta' : activeDamagePopup.priority === 'medium' ? 'Média' : 'Baixa'}\n*Descrição:* ${activeDamagePopup.description}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => {
+                        if (activeDamagePopup) setIgnoredDamageIds(prev => [...prev, activeDamagePopup.id]);
+                        setActiveDamagePopup(null);
+                      }}
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-[#25D366] text-white font-bold border border-[#128C7E] shadow-[0_0_15px_-3px_rgba(37,211,102,0.4)] hover:shadow-[0_0_20px_rgba(37,211,102,0.6)] hover:bg-[#1EBE5D] transition-all flex justify-center items-center gap-2"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="css-i6dzq1"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                      Avisar Zap
+                    </a>
+                  )}
+                  <button
+                    onClick={handleResolveFromPopup}
+                    className="flex-1 py-2.5 px-3 rounded-xl bg-primary-600 text-white font-bold border border-primary-500 shadow-[0_0_15px_-3px_rgba(21,160,133,0.4)] hover:shadow-[0_0_20px_rgba(21,160,133,0.6)] hover:bg-primary-500 transition-all flex justify-center items-center gap-2"
+                  >
+                    <Eye size={18} /> Resolver
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Toast Container */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
@@ -390,6 +579,7 @@ const EditProfileModal: React.FC<{ profile: any, onClose: () => void, addToast: 
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState(profile.full_name || '');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState(profile.phone || '');
   const [showPassword, setShowPassword] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -429,7 +619,8 @@ const EditProfileModal: React.FC<{ profile: any, onClose: () => void, addToast: 
           password: password,
           fullName: fullName,
           role: profile.role,
-          avatarUrl: finalAvatarUrl
+          avatarUrl: finalAvatarUrl,
+          phone: phone
         };
 
         const { error: funcError } = await supabase.functions.invoke('update-user', {
@@ -445,6 +636,7 @@ const EditProfileModal: React.FC<{ profile: any, onClose: () => void, addToast: 
         .update({
           full_name: fullName,
           avatar_url: finalAvatarUrl,
+          phone: phone,
           updated_at: new Date().toISOString()
         })
         .eq('id', profile.id);
@@ -523,6 +715,17 @@ const EditProfileModal: React.FC<{ profile: any, onClose: () => void, addToast: 
                 onChange={(e) => setFullName(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors"
                 placeholder="Seu nome"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Telefone / WhatsApp</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors"
+                placeholder="(11) 98765-4321"
               />
             </div>
 

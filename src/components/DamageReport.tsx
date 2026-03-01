@@ -60,7 +60,26 @@ export const DamageReport: React.FC = () => {
         })
         .subscribe();
 
-      return () => { supabase.removeChannel(channel); };
+      // Listen for global custom event to open damage details from the Popup
+      const handleOpenDetails = (e: Event) => {
+        const customEvent = e as CustomEvent<{ id: string }>;
+        const damageId = customEvent.detail.id;
+        // Need to ensure damages list is fresh or find it from current state
+        setDamages(currentDamages => {
+          const target = currentDamages.find(d => d.id === damageId);
+          if (target) {
+            setSupervisorViewDamage(target);
+          }
+          return currentDamages;
+        });
+      };
+
+      window.addEventListener('openDamageDetails', handleOpenDetails);
+
+      return () => {
+        window.removeEventListener('openDamageDetails', handleOpenDetails);
+        supabase.removeChannel(channel);
+      };
     }
   }, []);
 
@@ -392,9 +411,9 @@ export const DamageReport: React.FC = () => {
                   </span>
                 </div>
 
-                <h4 className="text-lg font-bold text-white mb-1">
-                  <span className="text-slate-500 font-normal text-sm mr-2">Marca/Modelo:</span>
-                  {damage.vehicles?.brand} {damage.vehicles?.model}
+                <h4 className="text-lg font-bold text-white mb-1 capitalize">
+                  <span className="text-slate-500 font-normal text-sm mr-2 normal-case">Marca/Modelo:</span>
+                  {damage.vehicles?.model} <span className="text-sm font-normal text-slate-400">/ {damage.vehicles?.brand}</span>
                 </h4>
                 <p className="text-sm text-slate-400 font-medium mb-4 uppercase tracking-widest">
                   <span className="text-slate-500 font-normal normal-case mr-2">Placa:</span>
@@ -806,9 +825,9 @@ export const DamageReport: React.FC = () => {
                     </span>
                     <span className="ml-auto text-xs text-slate-400">{new Date(supervisorViewDamage.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })}</span>
                   </div>
-                  <p className="text-base font-bold text-white">
-                    {supervisorViewDamage.vehicles?.brand} {supervisorViewDamage.vehicles?.model}{' '}
-                    <span className="font-mono text-slate-400 text-sm">({supervisorViewDamage.vehicles?.plate})</span>
+                  <p className="text-base font-bold text-white capitalize">
+                    {supervisorViewDamage.vehicles?.model} <span className="text-sm font-normal text-slate-400">/ {supervisorViewDamage.vehicles?.brand}</span>{' '}
+                    <span className="font-mono text-slate-400 text-sm normal-case">({supervisorViewDamage.vehicles?.plate})</span>
                   </p>
                   <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
                     <p className="text-sm text-slate-300 leading-relaxed">{supervisorViewDamage.description}</p>

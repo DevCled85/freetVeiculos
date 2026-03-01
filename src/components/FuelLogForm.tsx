@@ -149,8 +149,8 @@ export const FuelLogForm: React.FC = () => {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-1">
-                  <h4 className="text-lg font-bold text-white">
-                    {log.vehicles?.brand} {log.vehicles?.model}
+                  <h4 className="text-lg font-bold text-white capitalize">
+                    {log.vehicles?.model} <span className="text-sm font-normal text-slate-400">/ {log.vehicles?.brand}</span>
                   </h4>
                   <span className="text-xs text-slate-400">
                     {new Date(log.date).toLocaleDateString('pt-BR')}
@@ -230,7 +230,7 @@ export const FuelLogForm: React.FC = () => {
                     >
                       <option value="">Selecione um veículo</option>
                       {vehicles.map(v => (
-                        <option key={v.id} value={v.id}>{v.brand} {v.model} ({v.plate})</option>
+                        <option key={v.id} value={v.id}>{v.model} / {v.brand} ({v.plate})</option>
                       ))}
                     </select>
                   </div>

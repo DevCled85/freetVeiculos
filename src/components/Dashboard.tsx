@@ -12,7 +12,7 @@ import { ToastContainer, useToast } from './Toast';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface UserProfile { id: string; full_name: string; username?: string; role: 'driver' | 'supervisor'; created_at: string; avatar_url?: string | null; }
+interface UserProfile { id: string; full_name: string; username?: string; role: 'driver' | 'supervisor'; created_at: string; avatar_url?: string | null; phone?: string | null; }
 interface ChecklistRecord { id: string; vehicle_id: string; driver_id: string; date: string; status: string; created_at: string; vehicles?: { brand: string; model: string; plate: string; photo_url?: string | null }; profiles?: { full_name: string; username: string; avatar_url?: string | null }; checklist_items?: { id: string; item_name: string; is_ok: boolean; notes: string }[]; }
 interface DashboardProps { onNavigate?: (tab: string) => void; onVehicleSelect?: (vehicleId: string) => void; }
 
@@ -65,11 +65,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   // User management
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'driver' as 'driver' | 'supervisor' });
+  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'driver' as 'driver' | 'supervisor', phone: '' });
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<UserProfile | null>(null);
-  const [editData, setEditData] = useState({ username: '', password: '', role: 'driver' as 'driver' | 'supervisor' });
+  const [editData, setEditData] = useState({ username: '', password: '', role: 'driver' as 'driver' | 'supervisor', phone: '' });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -202,7 +202,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           }
         })
         .subscribe();
-
       return () => { supabase.removeChannel(channel); };
     }
   }, [profile?.id, profile?.role, fetchStats, fetchUsers, fetchChecklists, fetchMyDamages, fetchResolvedDamages]);
@@ -238,7 +237,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     setCreateLoading(true); setCreateError(null);
     try {
       const { data, error: fnError } = await supabase.functions.invoke('create-user', {
-        body: { username: newUser.username, password: newUser.password, role: newUser.role }
+        body: { username: newUser.username, password: newUser.password, role: newUser.role, phone: newUser.phone }
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
@@ -279,7 +278,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   const openEdit = (u: UserProfile) => {
     setEditTarget(u);
-    setEditData({ username: u.full_name, password: '', role: u.role });
+    setEditData({ username: u.full_name, password: '', role: u.role, phone: u.phone || '' });
     setEditError(null);
     setAvatarFile(null);
     setAvatarPreview(u.avatar_url || null);
@@ -291,6 +290,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     setEditLoading(true); setEditError(null);
     try {
       const body: any = { userId: editTarget.id, role: editData.role };
+      if (editData.phone.trim()) body.phone = editData.phone.trim();
       if (editData.username.trim()) body.username = editData.username.trim();
       if (editData.password) {
         if (editData.password.length < 6) throw new Error('Senha mínima 6 caracteres.');
@@ -535,7 +535,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-white truncate capitalize">
-              {cl.vehicles?.brand?.toLowerCase()} {cl.vehicles?.model?.toLowerCase()} — <span className="font-mono text-slate-400 uppercase">{cl.vehicles?.plate}</span>
+              {cl.vehicles?.model?.toLowerCase()} <span className="text-sm font-normal text-slate-400">/ {cl.vehicles?.brand?.toLowerCase()}</span> — <span className="font-mono text-slate-400 uppercase">{cl.vehicles?.plate}</span>
             </p>
             {isSupervisor && cl.profiles && (
               <div className="flex items-center gap-2 mt-1.5">
@@ -769,9 +769,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       </span>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-600">Resolvida</span>
                     </div>
-                    <p className="text-sm font-bold text-white truncate">
-                      <span className="text-slate-500 font-normal text-xs mr-1">Marca/Modelo:</span>
-                      {d.vehicles?.brand} — {d.vehicles?.model}
+                    <p className="text-sm font-bold text-white truncate capitalize">
+                      {d.vehicles?.model} <span className="text-sm font-normal text-slate-400">/ {d.vehicles?.brand}</span>
                     </p>
                     <p className="text-xs text-slate-400 font-medium uppercase tracking-widest">
                       <span className="text-slate-500 font-normal normal-case mr-1">Placa:</span>
@@ -880,6 +879,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </div>
             </div>
             <div className="space-y-1.5">
+              <label className="text-sm font-bold text-slate-300 ml-1">Telefone / WhatsApp</label>
+              <div className="relative"><User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input type="tel" value={newUser.phone} onChange={e => setNewUser({ ...newUser, phone: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500/50 transition-all" placeholder="(11) 98765-4321" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
               <label className="text-sm font-bold text-slate-300 ml-1">Foto de Perfil</label>
               <div className="flex items-center gap-4 p-4 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-800/50 hover:border-primary-500/50 transition-colors">
                 <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center relative group">
@@ -951,6 +956,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <label className="text-sm font-bold text-slate-300 ml-1">Nova Senha <span className="font-normal text-slate-500">(em branco = manter)</span></label>
               <div className="relative"><Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input type="password" value={editData.password} onChange={e => setEditData({ ...editData, password: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500/50 transition-all" placeholder="••••••••" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-slate-300 ml-1">Telefone / WhatsApp</label>
+              <div className="relative"><User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input type="tel" value={editData.phone} onChange={e => setEditData({ ...editData, phone: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500/50 transition-all" placeholder="(11) 98765-4321" />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -1097,7 +1108,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                         : blocked ? <AlertTriangle size={18} /> : <Car size={18} />}
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-white capitalize">{v.brand.toLowerCase()} {v.model.toLowerCase()}</p>
+                      <p className="text-sm font-bold text-white capitalize">{v.model.toLowerCase()} <span className="text-sm font-normal text-slate-400">/ {v.brand.toLowerCase()}</span></p>
                       <p className="text-xs text-slate-400">{v.plate}{inUse && ` • Em uso por ${v.current_driver}`}{blocked && ` • ${v.status === 'maintenance' ? 'Manutenção' : 'Inativo'}`}</p>
                     </div>
                   </div>
@@ -1163,9 +1174,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-600">Resolvida</span>
                   </div>
-                  <p className="text-sm font-bold text-white truncate">
-                    <span className="text-slate-500 font-normal text-xs mr-1">Marca/Modelo:</span>
-                    {d.vehicles?.brand} — {d.vehicles?.model}
+                  <p className="text-sm font-bold text-white truncate capitalize">
+                    {d.vehicles?.model} <span className="text-sm font-normal text-slate-400">/ {d.vehicles?.brand}</span>
                   </p>
                   <p className="text-xs text-slate-400 font-medium uppercase tracking-widest">
                     <span className="text-slate-500 font-normal normal-case mr-1">Placa:</span>
