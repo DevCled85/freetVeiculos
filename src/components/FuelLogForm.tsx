@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, Vehicle, FuelLog, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
+import { useToast, ToastContainer } from './Toast';
 import {
   Fuel,
   Car,
@@ -27,6 +28,7 @@ const MOCK_FUEL_LOGS: any[] = [
 
 export const FuelLogForm: React.FC = () => {
   const { profile } = useAuth();
+  const { toasts, addToast, dismissToast } = useToast();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [recentLogs, setRecentLogs] = useState<FuelLog[]>([]);
   const [isAdding, setIsAdding] = useState(false);
@@ -42,6 +44,19 @@ export const FuelLogForm: React.FC = () => {
   useEffect(() => {
     fetchVehicles();
     fetchRecentLogs();
+
+    if (isSupabaseConfigured) {
+      const channel = supabase.channel('fuel-updates')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fuel_logs' }, () => {
+          fetchRecentLogs();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
+          fetchVehicles();
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    }
   }, []);
 
   const fetchVehicles = async () => {
@@ -92,8 +107,10 @@ export const FuelLogForm: React.FC = () => {
       setIsAdding(false);
       fetchRecentLogs();
       setNewLog({ vehicle_id: '', mileage: 0, liters: 0, value: 0, date: new Date().toISOString().split('T')[0] });
-    } catch (error) {
+      addToast('Abastecimento registrado com sucesso!', 'success');
+    } catch (error: any) {
       console.error('Error logging fuel:', error);
+      addToast(error.message || 'Erro ao registrar abastecimento.', 'error');
     } finally {
       setLoading(false);
     }
@@ -101,6 +118,7 @@ export const FuelLogForm: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       {/* Header */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-white flex items-center gap-2">

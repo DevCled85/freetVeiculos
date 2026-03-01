@@ -13,6 +13,7 @@ import {
   Car
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useToast, ToastContainer } from './Toast';
 
 const MOCK_VEHICLES: Vehicle[] = [
   { id: '1', brand: 'Toyota', model: 'Corolla', year: 2022, plate: 'ABC-1234', mileage: 15000, status: 'active', created_at: '' },
@@ -27,6 +28,7 @@ const MOCK_DAMAGES: any[] = [
 
 export const DamageReport: React.FC = () => {
   const { profile } = useAuth();
+  const { toasts, addToast, dismissToast } = useToast();
   const [damages, setDamages] = useState<Damage[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isAdding, setIsAdding] = useState(false);
@@ -42,6 +44,19 @@ export const DamageReport: React.FC = () => {
   useEffect(() => {
     fetchDamages();
     fetchVehicles();
+
+    if (isSupabaseConfigured) {
+      const channel = supabase.channel('damages-updates')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'damages' }, () => {
+          fetchDamages();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
+          fetchVehicles();
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    }
   }, []);
 
   const fetchDamages = async () => {
@@ -111,8 +126,10 @@ export const DamageReport: React.FC = () => {
       setIsAdding(false);
       fetchDamages();
       setNewDamage({ vehicle_id: '', description: '', priority: 'medium', photo_url: '' });
-    } catch (error) {
+      addToast('Avaria reportada com sucesso!', 'info');
+    } catch (error: any) {
       console.error('Error reporting damage:', error);
+      addToast(error.message || 'Erro ao reportar avaria.', 'error');
     } finally {
       setLoading(false);
     }
@@ -137,11 +154,15 @@ export const DamageReport: React.FC = () => {
     if (!error) {
       setResolvingId(null);
       fetchDamages();
+      addToast('Avaria marcada como resolvida/consertada!', 'success');
+    } else {
+      addToast(error.message || 'Erro ao resolver avaria.', 'error');
     }
   };
 
   return (
     <div className="space-y-6">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex gap-2">

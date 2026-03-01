@@ -13,6 +13,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useToast, ToastContainer } from './Toast';
 
 const MOCK_VEHICLES: Vehicle[] = [
   { id: '1', brand: 'Toyota', model: 'Corolla', year: 2022, plate: 'ABC-1234', mileage: 15000, status: 'active', created_at: '' },
@@ -21,6 +22,7 @@ const MOCK_VEHICLES: Vehicle[] = [
 ];
 
 export const VehicleList: React.FC = () => {
+  const { toasts, addToast, dismissToast } = useToast();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,6 +40,16 @@ export const VehicleList: React.FC = () => {
 
   useEffect(() => {
     fetchVehicles();
+
+    if (isSupabaseConfigured) {
+      const channel = supabase.channel('vehicles-updates')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
+          fetchVehicles();
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    }
   }, []);
 
   const fetchVehicles = async () => {
@@ -82,6 +94,9 @@ export const VehicleList: React.FC = () => {
       setIsAdding(false);
       fetchVehicles();
       setNewVehicle({ brand: '', model: '', year: new Date().getFullYear(), plate: '', mileage: 0, status: 'active' });
+      addToast('Veículo cadastrado com sucesso!', 'success');
+    } else {
+      addToast(error.message || 'Erro ao cadastrar veículo.', 'error');
     }
   };
 
@@ -112,6 +127,9 @@ export const VehicleList: React.FC = () => {
     if (!error) {
       setEditingVehicle(null);
       fetchVehicles();
+      addToast('Veículo atualizado com sucesso!', 'success');
+    } else {
+      addToast(error.message || 'Erro ao atualizar veículo.', 'error');
     }
   };
 
@@ -134,6 +152,9 @@ export const VehicleList: React.FC = () => {
     if (!error) {
       setDeletingId(null);
       fetchVehicles();
+      addToast('Veículo excluído com sucesso.', 'info');
+    } else {
+      addToast(error.message || 'Erro ao excluir veículo.', 'error');
     }
   };
 
@@ -145,6 +166,7 @@ export const VehicleList: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div className="relative flex-1 w-full max-w-md">

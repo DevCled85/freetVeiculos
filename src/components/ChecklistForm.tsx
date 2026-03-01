@@ -12,6 +12,7 @@ import {
   ClipboardCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useToast, ToastContainer } from './Toast';
 
 const MOCK_VEHICLES: Vehicle[] = [
   { id: '1', brand: 'Toyota', model: 'Corolla', year: 2022, plate: 'ABC-1234', mileage: 15000, status: 'active', current_driver: 'João Silva', created_at: '' },
@@ -37,6 +38,7 @@ const CHECKLIST_ITEMS = [
 
 export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initialVehicleId }) => {
   const { profile } = useAuth();
+  const { toasts, addToast, dismissToast } = useToast();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<string>(initialVehicleId || '');
   const [step, setStep] = useState(initialVehicleId ? 2 : 1);
@@ -69,6 +71,19 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
       initialItems[item] = { ok: true, notes: '' };
     });
     setItems(initialItems);
+
+    if (isSupabaseConfigured) {
+      const channel = supabase.channel('checklist-form-updates')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'checklists' }, () => {
+          fetchVehicles();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
+          fetchVehicles();
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    }
   }, []);
 
   const handleSubmit = async () => {
@@ -76,10 +91,24 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
     setLoading(true);
 
     try {
-      // 0. Check if all items are OK upfront
+      // 0. Server-Side Race Condition Defense: Check if someone else already submitted a checklist today
+      const today = new Date().toISOString().split('T')[0];
+      const { data: existingChecklist, error: checkError } = await supabase
+        .from('checklists')
+        .select('id')
+        .eq('vehicle_id', selectedVehicle)
+        .gte('created_at', `${today}T00:00:00.000Z`)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+      if (existingChecklist) {
+        throw new Error('Este veículo acabou de ser assumido por outro motorista. Atualize a página e selecione outro veículo.');
+      }
+
+      // 1. Check if all items are OK upfront
       const isAllOk = Object.values(items).every((data: any) => data.ok);
 
-      // 1. Create Checklist
+      // 2. Create Checklist
       const { data: checklist, error: checklistError } = await supabase
         .from('checklists')
         .insert([{
@@ -92,7 +121,7 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
 
       if (checklistError) throw checklistError;
 
-      // 2. Create Checklist Items
+      // 3. Create Checklist Items
       const itemsToInsert = Object.entries(items).map(([name, data]) => ({
         checklist_id: checklist.id,
         item_name: name,
@@ -106,7 +135,7 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
 
       if (itemsError) throw itemsError;
 
-      // 3. Update Vehicle to "In Use"
+      // 4. Update Vehicle to "In Use"
       const { error: vehicleUpdateError } = await supabase
         .from('vehicles')
         .update({ current_driver: profile.full_name })
@@ -114,7 +143,7 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
 
       if (vehicleUpdateError) throw vehicleUpdateError;
 
-      // 4. Create Notification for Supervisors
+      // 5. Create Notification for Supervisors
       const selectedVehicleData = vehicles.find(v => v.id === selectedVehicle);
       await supabase.from('notifications').insert([{
         title: 'Novo Checklist Recebido',
@@ -123,9 +152,10 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
       }]);
 
       setSuccess(true);
+      addToast('Checklist enviado com sucesso! Bom trabalho.', 'success');
     } catch (error: any) {
       console.error('Error submitting checklist:', error);
-      alert(error.message || 'Erro ao salvar checklist. Verifique o console.');
+      addToast(error.message || 'Erro ao salvar checklist.', 'error');
     } finally {
       setLoading(false);
     }
@@ -138,6 +168,7 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
         animate={{ opacity: 1, scale: 1 }}
         className="bg-slate-900 p-12 rounded-3xl border border-slate-800 shadow-2xl text-center max-w-md mx-auto"
       >
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
         <div className="w-20 h-20 bg-primary-500/10 text-primary-400 border border-primary-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle2 size={40} />
         </div>
@@ -162,8 +193,8 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
 
     const todayChecklist = todayChecklists.find(c => c.vehicle_id === v.id);
     if (todayChecklist) {
-      // Já teve checklist hoje: só o mesmo motorista pode pegar
-      return todayChecklist.driver_id === profile?.id;
+      // Já teve checklist hoje: veículo indisponível para qualquer um
+      return false;
     }
 
     // Ninguém pegou hoje: disponível se não tiver um current_driver bloqueando de dias anteriores (ou for o próprio)
@@ -172,6 +203,7 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
 
   return (
     <div className="max-w-2xl mx-auto">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       {/* Progress Bar */}
       <div className="mb-8 flex items-center gap-2">
         {[1, 2].map((i) => (

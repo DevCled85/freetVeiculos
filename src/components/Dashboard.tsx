@@ -152,6 +152,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
           fetchStats();
         })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+          if (profile.role === 'supervisor') fetchUsers();
+        })
         .subscribe();
 
       return () => { supabase.removeChannel(channel); };
@@ -242,9 +245,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   };
 
   const resolveChecklist = async (clId: string, vehicleId: string) => {
+    // Pegar dados do checklist
+    const cl = checklists.find(c => c.id === clId);
+
     await supabase.from('checklists').update({ status: 'resolved' }).eq('id', clId);
     // Remove driver from vehicle since it's resolved/checked
     await supabase.from('vehicles').update({ current_driver: null }).eq('id', vehicleId);
+
+    // Notificar motorista
+    if (cl && cl.driver_id) {
+      const createdStr = new Date(cl.created_at).toLocaleDateString('pt-BR');
+      const resolvedStr = new Date().toLocaleDateString('pt-BR');
+      await supabase.from('notifications').insert([{
+        user_id: cl.driver_id,
+        title: 'Checklist Resolvido!',
+        message: `O supervisor marcou como concluído o checklist (do dia ${createdStr}). Data da resolução: ${resolvedStr}. Tudo seguro para rodar!`,
+        type: 'checklist'
+      }]);
+    }
+
     addToast('Checklist marcado como resolvido e veículo liberado.', 'success');
     fetchChecklists();
     fetchStats();
@@ -292,8 +311,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           if (vehErr) throw new Error(`Erro ao liberar veículo: ${vehErr.message}`);
           if (!vehData || vehData.length === 0) throw new Error('Falha de permissão ao liberar veículo (RLS).');
 
+          // Notificar motorista que foi 100% resolvido
+          const createdStr = new Date(cl.created_at).toLocaleDateString('pt-BR');
+          const resolvedStr = new Date().toLocaleDateString('pt-BR');
+          await supabase.from('notifications').insert([{
+            user_id: cl.driver_id,
+            title: 'Checklist Resolvido!',
+            message: `O supervisor consertou todos os itens do seu checklist (de ${createdStr}). Resolvido em: ${resolvedStr}.`,
+            type: 'checklist'
+          }]);
+
           addToast('Todos os problemas foram reparados. Veículo liberado!', 'success');
         } else {
+          // Notificar motorista sobre a edição/atualização
+          const createdStr = new Date(cl.created_at).toLocaleDateString('pt-BR');
+          await supabase.from('notifications').insert([{
+            user_id: cl.driver_id,
+            title: 'Atualização no Checklist',
+            message: `O supervisor analisou/alterou ou consertou alguns itens reportados do seu checklist de ${createdStr}.`,
+            type: 'checklist'
+          }]);
+
           addToast('Reparos parciais salvos com sucesso.', 'info');
         }
       }
