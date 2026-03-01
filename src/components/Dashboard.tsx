@@ -198,6 +198,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       const { data, error: fnError } = await supabase.functions.invoke('update-user', { body });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
+
+      // Notify the updated user
+      await supabase.from('notifications').insert([{
+        user_id: editTarget.id,
+        title: 'Perfil Atualizado',
+        message: 'O supervisor modificou as informações de acesso do seu perfil (nome, senha ou nível).',
+        type: 'user'
+      }]);
+
       setEditTarget(null);
       addToast(`Usuário "${editData.username || editTarget.full_name}" atualizado!`, 'success');
       fetchUsers();
@@ -229,8 +238,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       const { error: itemsError } = await supabase.from('checklist_items').delete().eq('checklist_id', deleteChecklistId);
       if (itemsError) throw itemsError;
 
+      // Pegar info do motorista antes de deletar
+      const clToDel = checklists.find(c => c.id === deleteChecklistId);
+
       const { error: clError } = await supabase.from('checklists').delete().eq('id', deleteChecklistId);
       if (clError) throw clError;
+
+      // Alertar motorista sobre remoção
+      if (clToDel && clToDel.driver_id) {
+        const createDate = new Date(clToDel.created_at).toLocaleDateString('pt-BR');
+        await supabase.from('notifications').insert([{
+          user_id: clToDel.driver_id,
+          title: 'Checklist Removido',
+          message: `O supervisor apagou permanentemente o seu checklist do veículo criado no dia ${createDate}.`,
+          type: 'checklist'
+        }]);
+      }
 
       addToast('Checklist removido.', 'info');
       setDeleteChecklistId(null);

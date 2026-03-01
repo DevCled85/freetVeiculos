@@ -152,6 +152,18 @@ export const DamageReport: React.FC = () => {
       .eq('id', resolvingId);
 
     if (!error) {
+      // Setup Notification
+      const targetDamage = damages.find(d => d.id === resolvingId);
+      if (targetDamage && targetDamage.reported_by) {
+        const dmgDay = new Date(targetDamage.created_at).toLocaleDateString('pt-BR');
+        await supabase.from('notifications').insert([{
+          user_id: targetDamage.reported_by,
+          title: 'Avaria Consertada',
+          message: `O supervisor marcou como resolvido/consertado o defeito reportado por você no veículo no dia ${dmgDay}.`,
+          type: 'damage'
+        }]);
+      }
+
       setResolvingId(null);
       fetchDamages();
       addToast('Avaria marcada como resolvida/consertada!', 'success');
