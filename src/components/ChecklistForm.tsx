@@ -188,18 +188,14 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
     );
   }
 
-  const availableVehicles = vehicles.filter(v => {
-    if (v.status !== 'active') return false;
-
-    const todayChecklist = todayChecklists.find(c => c.vehicle_id === v.id);
-    if (todayChecklist) {
-      // Já teve checklist hoje: veículo indisponível para qualquer um
-      return false;
-    }
-
-    // Ninguém pegou hoje: disponível se não tiver um current_driver bloqueando de dias anteriores (ou for o próprio)
-    return !v.current_driver || v.current_driver === profile?.full_name;
-  });
+  const availableVehicles = vehicles
+    .filter(v => {
+      if (v.status !== 'active') return false;
+      const todayChecklist = todayChecklists.find(c => c.vehicle_id === v.id);
+      if (todayChecklist) return false;
+      return !v.current_driver || v.current_driver === profile?.full_name;
+    })
+    .sort((a, b) => (!a.current_driver ? 0 : 1) - (!b.current_driver ? 0 : 1));
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -231,21 +227,39 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
                   <button
                     key={v.id}
                     onClick={() => setSelectedVehicle(v.id)}
-                    className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${selectedVehicle === v.id
+                    className={`relative w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all overflow-hidden ${selectedVehicle === v.id
                       ? 'border-primary-500 bg-primary-500/10'
                       : 'border-slate-800 hover:border-slate-700 bg-slate-800/30'
                       }`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className={`p-3 rounded-xl ${selectedVehicle === v.id ? 'bg-primary-600 text-white shadow-md shadow-primary-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-                        <Car size={24} />
-                      </div>
+                    {/* Background image fading left */}
+                    {(v as any).photo_url && (
+                      <>
+                        <img
+                          src={(v as any).photo_url}
+                          alt=""
+                          className="absolute inset-y-0 right-0 h-full w-2/3 object-cover object-center pointer-events-none select-none"
+                        />
+                        <div className={`absolute inset-0 pointer-events-none ${selectedVehicle === v.id
+                          ? 'bg-gradient-to-r from-primary-950/95 via-primary-950/80 to-transparent'
+                          : 'bg-gradient-to-r from-slate-900/95 via-slate-900/80 to-transparent'}`}
+                        />
+                      </>
+                    )}
+
+                    {/* Content */}
+                    <div className="relative flex items-center gap-4 z-10">
+                      {!(v as any).photo_url && (
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${selectedVehicle === v.id ? 'bg-primary-600/30 text-primary-400' : 'bg-slate-800 border border-slate-700 text-slate-400'}`}>
+                          <Car size={22} />
+                        </div>
+                      )}
                       <div className="text-left">
-                        <p className="font-bold text-white">{v.brand} {v.model}</p>
+                        <p className="font-bold text-white capitalize">{v.brand.toLowerCase()} {v.model.toLowerCase()}</p>
                         <p className="text-sm text-slate-400 uppercase tracking-widest">{v.plate}</p>
                       </div>
                     </div>
-                    {selectedVehicle === v.id && <CheckCircle2 className="text-primary-400" size={24} />}
+                    {selectedVehicle === v.id && <CheckCircle2 className="relative text-primary-400 z-10 shrink-0" size={24} />}
                   </button>
                 ))
               ) : (

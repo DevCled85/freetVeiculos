@@ -5,15 +5,15 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import {
   Car, AlertTriangle, CheckCircle2, Clock, TrendingUp, ClipboardCheck,
   UserPlus, X, User, Lock, ShieldCheck, Pencil, Trash2, Users, Bell,
-  FileText, ChevronDown, ChevronUp
+  FileText, ChevronDown, ChevronUp, Upload, Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ToastContainer, useToast } from './Toast';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface UserProfile { id: string; full_name: string; username?: string; role: 'driver' | 'supervisor'; created_at: string; }
-interface ChecklistRecord { id: string; vehicle_id: string; driver_id: string; date: string; status: string; created_at: string; vehicles?: { brand: string; model: string; plate: string }; profiles?: { full_name: string; username: string }; checklist_items?: { id: string; item_name: string; is_ok: boolean; notes: string }[]; }
+interface UserProfile { id: string; full_name: string; username?: string; role: 'driver' | 'supervisor'; created_at: string; avatar_url?: string | null; }
+interface ChecklistRecord { id: string; vehicle_id: string; driver_id: string; date: string; status: string; created_at: string; vehicles?: { brand: string; model: string; plate: string; photo_url?: string | null }; profiles?: { full_name: string; username: string; avatar_url?: string | null }; checklist_items?: { id: string; item_name: string; is_ok: boolean; notes: string }[]; }
 interface DashboardProps { onNavigate?: (tab: string) => void; onVehicleSelect?: (vehicleId: string) => void; }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -72,14 +72,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [editData, setEditData] = useState({ username: '', password: '', role: 'driver' as 'driver' | 'supervisor' });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserProfile | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteChecklistId, setDeleteChecklistId] = useState<string | null>(null);
   const [deleteChecklistLoading, setDeleteChecklistLoading] = useState(false);
+  const [deleteDamageId, setDeleteDamageId] = useState<string | null>(null);
+  const [deleteDamageLoading, setDeleteDamageLoading] = useState(false);
 
   // Checklists
   const [checklists, setChecklists] = useState<ChecklistRecord[]>([]);
   const [expandedChecklist, setExpandedChecklist] = useState<string | null>(null);
+  const [myDamages, setMyDamages] = useState<Damage[]>([]);
+  const [resolvedDamages, setResolvedDamages] = useState<Damage[]>([]);
 
   // Supervisor Resolving
   const [resolvingChecklist, setResolvingChecklist] = useState<string | null>(null);
@@ -115,11 +121,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const fetchChecklists = useCallback(async (driverId?: string) => {
     if (!isSupabaseConfigured) return;
     let q = supabase.from('checklists')
-      .select('*, vehicles(brand, model, plate), profiles(full_name, username), checklist_items(*)')
+      .select('*, vehicles(brand, model, plate, photo_url), profiles(full_name, username, avatar_url), checklist_items(*)')
       .order('created_at', { ascending: false });
     if (driverId) q = q.eq('driver_id', driverId);
     const { data } = await q.limit(20);
     setChecklists(data || []);
+  }, []);
+
+  const fetchMyDamages = useCallback(async (driverId?: string) => {
+    if (!isSupabaseConfigured || !driverId) return;
+    const { data } = await supabase
+      .from('damages')
+      .select('*, vehicles(brand, model, plate)')
+      .eq('reported_by', driverId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (data) setMyDamages(data as any);
+  }, []);
+
+  const fetchResolvedDamages = useCallback(async (driverId?: string) => {
+    if (!isSupabaseConfigured) return;
+    let q = supabase
+      .from('damages')
+      .select('*, vehicles(brand, model, plate), reporter:reported_by(full_name, avatar_url)')
+      .eq('status', 'resolved')
+      .order('created_at', { ascending: false })
+      .limit(30);
+    if (driverId) q = q.eq('reported_by', driverId);
+    const { data } = await q;
+    if (data) setResolvedDamages(data as any);
   }, []);
 
   useEffect(() => {
@@ -128,8 +158,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     if (profile?.role === 'supervisor') {
       fetchUsers();
       fetchChecklists();
+      fetchResolvedDamages();
     } else if (profile?.id) {
       fetchChecklists(profile.id);
+      fetchMyDamages(profile.id);
+      fetchResolvedDamages(profile.id);
     }
 
     if (profile) {
@@ -155,13 +188,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
           if (profile.role === 'supervisor') fetchUsers();
         })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'damages' }, (payload) => {
+          fetchStats();
+          if (profile.role === 'driver') {
+            fetchMyDamages(profile.id);
+            fetchResolvedDamages(profile.id);
+          }
+          if (profile.role === 'supervisor') {
+            fetchResolvedDamages();
+            if (payload.eventType === 'INSERT') {
+              addToast('🚨 Nova avaria acabou de ser reportada!', 'error', 6000);
+            }
+          }
+        })
         .subscribe();
 
       return () => { supabase.removeChannel(channel); };
     }
-  }, [profile?.id, profile?.role, fetchStats, fetchUsers, fetchChecklists]);
+  }, [profile?.id, profile?.role, fetchStats, fetchUsers, fetchChecklists, fetchMyDamages, fetchResolvedDamages]);
 
   // ── Create User ───────────────────────────────────────────────────────────────
+
+  const uploadAvatar = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+      const filePath = `${profile?.id}/${fileName}`; // Store under current user's folder just for organization
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (err: any) {
+      console.error('Error uploading avatar:', err);
+      addToast(`Erro na foto: ${err.message}`, 'error');
+      return null;
+    }
+  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,8 +242,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
+
+      // Once user is created (and their profile exists), try to update it with avatar if one was selected
+      if (avatarFile) {
+        let newUserId = data?.user?.id;
+
+        // If the Edge function didn't return the ID, fetch it manually using the username
+        if (!newUserId) {
+          const { data: newUserProfile } = await supabase.from('profiles').select('id').eq('username', newUser.username).single();
+          newUserId = newUserProfile?.id;
+        }
+
+        if (newUserId) {
+          const url = await uploadAvatar(avatarFile);
+          if (url) {
+            const { error: updateError } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', newUserId);
+            if (updateError) {
+              console.error('Error updating profile with avatar:', updateError);
+              addToast('Erro ao salvar foto no banco de dados', 'error');
+            }
+          }
+        }
+      }
+
       setShowCreateModal(false);
-      setNewUser({ username: '', password: '', role: 'driver' });
+      setNewUser({ username: '', password: '', role: 'driver', avatar_url: null });
+      setAvatarFile(null);
+      setAvatarPreview(null);
       addToast(`Usuário "${data.username}" cadastrado!`, 'success');
       fetchUsers();
     } catch (err: any) { setCreateError(err.message); }
@@ -182,7 +277,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   // ── Edit User ─────────────────────────────────────────────────────────────────
 
-  const openEdit = (u: UserProfile) => { setEditTarget(u); setEditData({ username: u.full_name, password: '', role: u.role }); setEditError(null); };
+  const openEdit = (u: UserProfile) => {
+    setEditTarget(u);
+    setEditData({ username: u.full_name, password: '', role: u.role });
+    setEditError(null);
+    setAvatarFile(null);
+    setAvatarPreview(u.avatar_url || null);
+  };
 
   const handleEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,6 +299,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       const { data, error: fnError } = await supabase.functions.invoke('update-user', { body });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
+
+      if (avatarFile) {
+        const url = await uploadAvatar(avatarFile);
+        if (url) {
+          const { error: updateError } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', editTarget.id);
+          if (updateError) {
+            console.error('Error updating profile with avatar:', updateError);
+            addToast('Erro ao atualizar foto no banco de dados', 'error');
+          }
+        }
+      } else if (avatarPreview === null && editTarget.avatar_url) {
+        // Avatar was cleared
+        const { error: clearError } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', editTarget.id);
+        if (clearError) {
+          console.error('Error clearing profile avatar:', clearError);
+          addToast('Erro ao remover foto do banco de dados', 'error');
+        }
+      }
 
       // Notify the updated user
       await supabase.from('notifications').insert([{
@@ -229,6 +348,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       fetchUsers();
     } catch (err: any) { addToast(err.message || 'Erro ao deletar.', 'error'); setDeleteTarget(null); }
     finally { setDeleteLoading(false); }
+  };
+
+  const handleDeleteAnyDamage = async () => {
+    if (!deleteDamageId) return;
+    setDeleteDamageLoading(true);
+    try {
+      const { error } = await supabase.from('damages').delete().eq('id', deleteDamageId);
+      if (error) throw error;
+      addToast('Avaria removida com sucesso.', 'info');
+      setDeleteDamageId(null);
+      fetchResolvedDamages();
+      fetchStats();
+    } catch (err: any) {
+      addToast(err.message || 'Erro ao remover avaria.', 'error');
+      setDeleteDamageId(null);
+    } finally {
+      setDeleteDamageLoading(false);
+    }
   };
 
   const handleDeleteChecklist = async () => {
@@ -386,15 +523,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     return (
       <div key={cl.id} className={`bg-slate-900 rounded-2xl border ${isResolved ? 'border-emerald-500/30' : 'border-slate-700'} overflow-hidden shadow-sm`}>
         <div className="flex items-center gap-3 p-4">
-          <div className={`p-2 rounded-xl border ${isResolved ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : hasIssues ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
-            <FileText size={18} />
-          </div>
+          {/* Icon or vehicle photo thumbnail */}
+          {cl.vehicles?.photo_url ? (
+            <div className={`w-11 h-11 rounded-xl overflow-hidden shrink-0 border ${isResolved ? 'border-emerald-500/30' : hasIssues ? 'border-red-500/20' : 'border-emerald-500/20'}`}>
+              <img src={cl.vehicles.photo_url} alt={`${cl.vehicles.brand} ${cl.vehicles.model}`} className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div className={`p-2 rounded-xl border ${isResolved ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : hasIssues ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+              <FileText size={18} />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white truncate">
-              {cl.vehicles?.brand} {cl.vehicles?.model} — <span className="font-mono text-slate-400">{cl.vehicles?.plate}</span>
+            <p className="text-sm font-bold text-white truncate capitalize">
+              {cl.vehicles?.brand?.toLowerCase()} {cl.vehicles?.model?.toLowerCase()} — <span className="font-mono text-slate-400 uppercase">{cl.vehicles?.plate}</span>
             </p>
             {isSupervisor && cl.profiles && (
-              <p className="text-xs text-primary-400 font-semibold">Motorista: {cl.profiles.full_name}</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                {cl.profiles.avatar_url ? (
+                  <img src={cl.profiles.avatar_url} alt={cl.profiles.full_name} className="w-5 h-5 rounded-full object-cover border border-slate-700 shadow-sm" />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 shadow-sm shrink-0">
+                    <User size={10} className="text-slate-400" />
+                  </div>
+                )}
+                <p className="text-xs text-primary-400 font-semibold">Motorista: {cl.profiles.full_name}</p>
+              </div>
             )}
             <p className="text-xs text-slate-500">
               {new Date(cl.created_at).toLocaleString('pt-BR')}
@@ -563,24 +716,85 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-red-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-            <div className="flex items-center justify-between mb-6 relative z-10">
-              <h3 className="text-lg font-bold text-white">Avarias Recentes</h3>
-              <button className="text-primary-400 text-xs font-bold hover:underline">Ver todas</button>
+
+          {/* Relatórios - placeholder */}
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col relative">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-primary-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-primary-500/5">
+              <div className="p-2 bg-primary-500/10 border border-primary-500/20 text-primary-400 rounded-xl">
+                <FileText size={18} />
+              </div>
+              <h3 className="text-base font-bold text-white">Relatórios</h3>
+              <span className="ml-auto text-[10px] font-bold bg-slate-800 border border-slate-700 text-slate-400 px-2 py-0.5 rounded-full">Em breve</span>
             </div>
-            <div className="space-y-4 relative z-10">
-              {recentDamages.length > 0 ? recentDamages.map((d: any) => (
-                <div key={d.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition-colors">
-                  <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${d.priority === 'high' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' : d.priority === 'medium' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]'}`} />
+            <div className="flex-1 flex flex-col items-center justify-center py-10 px-6 text-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center">
+                <FileText size={28} className="text-primary-400 opacity-60" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-300">Relatórios do Sistema</p>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Relatórios de avarias, checklists e desempenho da frota estarão disponíveis em breve.</p>
+              </div>
+              <div className="flex flex-wrap gap-2 justify-center mt-1">
+                {['Avarias', 'Checklists', 'Frota', 'Motoristas'].map(tag => (
+                  <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-500 font-medium">{tag}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Supervisor Damage History - full width standalone */}
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-emerald-500/5">
+            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl"><CheckCircle2 size={18} /></div>
+            <h3 className="text-base font-bold text-white">Histórico de Avarias Resolvidas</h3>
+            <span className="ml-auto text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">{resolvedDamages.length}</span>
+          </div>
+          <div className="divide-y divide-slate-800/50 max-h-96 overflow-y-auto scrollbar-dark">
+            {resolvedDamages.length === 0 ? (
+              <div className="text-center py-8 text-slate-500 text-sm">Nenhuma avaria resolvida ainda.</div>
+            ) : (
+              resolvedDamages.map((d: any) => (
+                <div key={d.id} className="flex items-start gap-4 px-5 py-4 hover:bg-slate-800/40 transition-colors group">
+                  <div className="w-12 h-12 shrink-0 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center">
+                    {d.photo_url
+                      ? <img src={d.photo_url} alt="avaria" className="w-full h-full object-cover" />
+                      : <AlertTriangle size={20} className="text-slate-500" />}
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{d.vehicles?.brand} {d.vehicles?.model}</p>
-                    <p className="text-xs text-slate-400 line-clamp-1">{d.description}</p>
-                    <p className="text-[10px] text-slate-500 mt-1">{new Date(d.created_at).toLocaleDateString('pt-BR')}</p>
+                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${d.priority === 'high' ? 'bg-red-100 text-red-600' : d.priority === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                        {d.priority === 'high' ? 'Alta' : d.priority === 'medium' ? 'Média' : 'Baixa'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-600">Resolvida</span>
+                    </div>
+                    <p className="text-sm font-bold text-white truncate">
+                      <span className="text-slate-500 font-normal text-xs mr-1">Marca/Modelo:</span>
+                      {d.vehicles?.brand} — {d.vehicles?.model}
+                    </p>
+                    <p className="text-xs text-slate-400 font-medium uppercase tracking-widest">
+                      <span className="text-slate-500 font-normal normal-case mr-1">Placa:</span>
+                      {d.vehicles?.plate}
+                    </p>
+                    {d.reporter?.full_name && (
+                      <div className="flex items-center gap-2 mt-1.5 mb-1">
+                        {d.reporter.avatar_url ? (
+                          <img src={d.reporter.avatar_url} alt={d.reporter.full_name} className="w-4 h-4 rounded-full object-cover border border-slate-700 shadow-sm" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 shadow-sm shrink-0">
+                            <User size={8} className="text-slate-400" />
+                          </div>
+                        )}
+                        <p className="text-[11px] text-primary-400 font-semibold mt-0.5">Motorista: {d.reporter.full_name}</p>
+                      </div>
+                    )}
+                    <p className="text-xs text-emerald-300 line-clamp-1 mt-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg w-fit max-w-full">{d.description}</p>
+                    <p className="text-[10px] text-slate-500 mt-1">{new Date(d.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })}</p>
                   </div>
                 </div>
-              )) : <div className="text-center py-6 text-slate-500 text-sm">Nenhuma avaria reportada</div>}
-            </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -622,17 +836,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <div className="divide-y divide-slate-800/50">
             {users.map(u => (
               <div key={u.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-slate-800/50 transition-colors">
-                <div className="w-9 h-9 rounded-full bg-primary-500/20 text-primary-400 border border-primary-500/30 flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
-                  {u.full_name.charAt(0).toUpperCase()}
+                <div className="w-10 h-10 rounded-full bg-primary-500/20 text-primary-400 border border-primary-500/30 flex items-center justify-center font-bold text-sm shrink-0 shadow-sm overflow-hidden">
+                  {u.avatar_url ? (
+                    <img src={u.avatar_url} alt={u.full_name} className="w-full h-full object-cover" />
+                  ) : (
+                    u.full_name.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">{u.full_name}</p>
-                  <p className="text-xs text-slate-400">{u.username || u.full_name.toLowerCase()}</p>
+                  <p className="text-sm font-bold text-white truncate capitalize">{u.full_name.toLowerCase()}</p>
+                  <p className="text-xs text-slate-400 lowercase">{u.username || u.full_name.toLowerCase()}</p>
                 </div>
                 <RoleBadge role={u.role} />
                 <div className="flex items-center gap-1">
                   <button onClick={() => openEdit(u)} className="p-2 rounded-xl hover:bg-primary-500/10 text-slate-500 hover:text-primary-400 transition-colors"><Pencil size={16} /></button>
-                  <button onClick={() => setDeleteTarget(u)} className="p-2 rounded-xl hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={16} /></button>
+                  {u.id !== profile?.id && (
+                    <button onClick={() => setDeleteTarget(u)} className="p-2 rounded-xl hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={16} /></button>
+                  )}
                 </div>
               </div>
             ))}
@@ -659,6 +879,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <input type="password" required minLength={6} value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500/50 transition-all" placeholder="Mínimo 6 caracteres" />
               </div>
             </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-slate-300 ml-1">Foto de Perfil</label>
+              <div className="flex items-center gap-4 p-4 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-800/50 hover:border-primary-500/50 transition-colors">
+                <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center relative group">
+                  {avatarPreview ? (
+                    <>
+                      <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => { setAvatarFile(null); setAvatarPreview(null); }} className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <X size={20} className="text-white" />
+                      </button>
+                    </>
+                  ) : (
+                    <User size={24} className="text-slate-500" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setAvatarFile(file);
+                        setAvatarPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="hidden"
+                    id="avatar-upload"
+                  />
+                  <label htmlFor="avatar-upload" className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 hover:border-primary-500 text-slate-300 rounded-xl transition-colors text-sm font-bold">
+                    <Upload size={16} /> Selecionar Foto
+                  </label>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-sm font-bold text-slate-300 ml-1">Nível de Acesso</label>
               <div className="grid grid-cols-2 gap-3">
@@ -698,17 +954,55 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-slate-300 ml-1">Nível de Acesso</label>
-              <div className="grid grid-cols-2 gap-3">
-                {(['driver', 'supervisor'] as const).map(r => (
-                  <button key={r} type="button" onClick={() => setEditData({ ...editData, role: r })}
-                    className={`p-3 rounded-xl border-2 text-left transition-all ${editData.role === r ? 'border-primary-500 bg-primary-500/10' : 'border-slate-700 bg-slate-800 hover:border-slate-600'}`}>
-                    {r === 'driver' ? <Car size={18} className={`mb-1 ${editData.role === r ? 'text-primary-400' : 'text-slate-500'}`} /> : <ShieldCheck size={18} className={`mb-1 ${editData.role === r ? 'text-primary-400' : 'text-slate-500'}`} />}
-                    <p className={`text-sm font-bold ${editData.role === r ? 'text-primary-400' : 'text-slate-400'}`}>{r === 'driver' ? 'Motorista' : 'Supervisor'}</p>
-                  </button>
-                ))}
+              <label className="text-sm font-bold text-slate-300 ml-1">Foto de Perfil</label>
+              <div className="flex items-center gap-4 p-4 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-800/50 hover:border-amber-500/50 transition-colors">
+                <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center relative group">
+                  {avatarPreview ? (
+                    <>
+                      <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => { setAvatarFile(null); setAvatarPreview(null); }} className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <X size={20} className="text-white" />
+                      </button>
+                    </>
+                  ) : (
+                    <User size={24} className="text-slate-500" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setAvatarFile(file);
+                        setAvatarPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="hidden"
+                    id="avatar-edit"
+                  />
+                  <label htmlFor="avatar-edit" className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 hover:border-amber-500 text-slate-300 rounded-xl transition-colors text-sm font-bold">
+                    <Upload size={16} /> Alterar Foto
+                  </label>
+                </div>
               </div>
             </div>
+
+            {editTarget?.id !== profile?.id && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-slate-300 ml-1">Nível de Acesso</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {(['driver', 'supervisor'] as const).map(r => (
+                    <button key={r} type="button" onClick={() => setEditData({ ...editData, role: r })}
+                      className={`p-3 rounded-xl border-2 text-left transition-all ${editData.role === r ? 'border-amber-500 bg-amber-500/10' : 'border-slate-700 bg-slate-800 hover:border-slate-600'}`}>
+                      {r === 'driver' ? <Car size={18} className={`mb-1 ${editData.role === r ? 'text-amber-400' : 'text-slate-500'}`} /> : <ShieldCheck size={18} className={`mb-1 ${editData.role === r ? 'text-amber-400' : 'text-slate-500'}`} />}
+                      <p className={`text-sm font-bold ${editData.role === r ? 'text-amber-400' : 'text-slate-400'}`}>{r === 'driver' ? 'Motorista' : 'Supervisor'}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <button type="submit" disabled={editLoading} className="w-full bg-amber-500 text-white font-bold py-3.5 rounded-xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-[0_0_15px_-3px_rgba(245,158,11,0.3)]">
               {editLoading ? 'Salvando...' : <><Pencil size={18} /> Salvar Alterações</>}
             </button>
@@ -730,7 +1024,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </div>
         </ModalWrapper>
         {deleteChecklistModal}
-      </div>
+
+        {/* Delete Damage Confirm */}
+        <ModalWrapper show={!!deleteDamageId} onClose={() => setDeleteDamageId(null)}>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 size={28} /></div>
+            <h2 className="text-xl font-bold text-white mb-2">Remover Avaria?</h2>
+            <p className="text-sm text-slate-400 mb-6">Tem certeza que deseja remover permanentemente esta avaria? Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteDamageId(null)} className="flex-1 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold hover:bg-slate-700 transition-colors">Cancelar</button>
+              <button onClick={handleDeleteAnyDamage} disabled={deleteDamageLoading} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-500 disabled:opacity-60 shadow-[0_0_15px_-3px_rgba(239,68,68,0.4)] transition-colors">
+                {deleteDamageLoading ? 'Removendo...' : 'Remover'}
+              </button>
+            </div>
+          </div>
+        </ModalWrapper>
+      </div >
     );
   }
 
@@ -766,7 +1075,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-2xl relative overflow-hidden">
           <h3 className="text-lg font-bold text-white mb-4 relative z-10">Frota</h3>
           <div className="space-y-3 relative z-10">
-            {vehicles.map(v => {
+            {[...vehicles].sort((a, b) => {
+              const priority = (v: typeof a) =>
+                v.status === 'active' && !v.current_driver ? 0 :
+                  v.status === 'maintenance' ? 1 : 2;
+              return priority(a) - priority(b);
+            }).map(v => {
               const blocked = v.status === 'maintenance' || v.status === 'inactive';
               const inUse = v.status === 'active' && v.current_driver;
               const avail = v.status === 'active' && !v.current_driver;
@@ -777,9 +1091,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               return (
                 <div key={v.id} className={`flex items-center justify-between p-3 rounded-xl border ${cardBg}`}>
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-xl ${iconBg}`}>{blocked ? <AlertTriangle size={18} /> : <Car size={18} />}</div>
+                    <div className={`w-10 h-10 rounded-xl overflow-hidden shrink-0 ${iconBg} flex items-center justify-center`}>
+                      {(v as any).photo_url
+                        ? <img src={(v as any).photo_url} alt={`${v.brand} ${v.model}`} className="w-full h-full object-cover" />
+                        : blocked ? <AlertTriangle size={18} /> : <Car size={18} />}
+                    </div>
                     <div>
-                      <p className="text-sm font-bold text-white">{v.brand} {v.model}</p>
+                      <p className="text-sm font-bold text-white capitalize">{v.brand.toLowerCase()} {v.model.toLowerCase()}</p>
                       <p className="text-xs text-slate-400">{v.plate}{inUse && ` • Em uso por ${v.current_driver}`}{blocked && ` • ${v.status === 'maintenance' ? 'Manutenção' : 'Inativo'}`}</p>
                     </div>
                   </div>
@@ -819,6 +1137,49 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       </div>
       {deleteChecklistModal}
+
+      {/* Driver Damage History - Resolved */}
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-emerald-500/5">
+          <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl"><CheckCircle2 size={18} /></div>
+          <h3 className="text-base font-bold text-white">Histórico de Avarias Resolvidas</h3>
+          <span className="ml-auto text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">{resolvedDamages.length}</span>
+        </div>
+        <div className="divide-y divide-slate-800/50">
+          {resolvedDamages.length === 0 ? (
+            <div className="text-center py-8 text-slate-500 text-sm">Nenhuma avaria resolvida ainda.</div>
+          ) : (
+            resolvedDamages.map((d: any) => (
+              <div key={d.id} className="flex items-start gap-4 px-5 py-4 hover:bg-slate-800/40 transition-colors">
+                <div className="w-12 h-12 shrink-0 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center">
+                  {d.photo_url
+                    ? <img src={d.photo_url} alt="avaria" className="w-full h-full object-cover" />
+                    : <AlertTriangle size={20} className="text-slate-500" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${d.priority === 'high' ? 'bg-red-100 text-red-600' : d.priority === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                      {d.priority === 'high' ? 'Alta' : d.priority === 'medium' ? 'Média' : 'Baixa'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-600">Resolvida</span>
+                  </div>
+                  <p className="text-sm font-bold text-white truncate">
+                    <span className="text-slate-500 font-normal text-xs mr-1">Marca/Modelo:</span>
+                    {d.vehicles?.brand} — {d.vehicles?.model}
+                  </p>
+                  <p className="text-xs text-slate-400 font-medium uppercase tracking-widest">
+                    <span className="text-slate-500 font-normal normal-case mr-1">Placa:</span>
+                    {d.vehicles?.plate}
+                  </p>
+                  <p className="text-xs text-emerald-300 line-clamp-1 mt-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg w-fit max-w-full">{d.description}</p>
+                  <p className="text-[10px] text-slate-500 mt-1">{new Date(d.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })}</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 };
+

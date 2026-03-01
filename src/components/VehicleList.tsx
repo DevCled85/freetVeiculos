@@ -3,14 +3,14 @@ import { supabase, Vehicle, isSupabaseConfigured } from '../lib/supabase';
 import {
   Plus,
   Search,
-  Filter,
-  MoreVertical,
-  Car,
   Trash2,
   Edit2,
   CheckCircle2,
   AlertCircle,
-  XCircle
+  XCircle,
+  Upload,
+  Car,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast, ToastContainer } from './Toast';
@@ -37,6 +37,9 @@ export const VehicleList: React.FC = () => {
     mileage: 0,
     status: 'active' as const
   });
+  const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
+  const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
     fetchVehicles();
@@ -70,6 +73,14 @@ export const VehicleList: React.FC = () => {
     setLoading(false);
   };
 
+  const uploadVehiclePhoto = async (file: File): Promise<string | null> => {
+    const ext = file.name.split('.').pop();
+    const path = `photos/${Math.random().toString(36).substring(2)}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('vehicles').upload(path, file);
+    if (error) { addToast('Erro ao upar imagem: ' + error.message, 'error'); return null; }
+    return supabase.storage.from('vehicles').getPublicUrl(path).data.publicUrl;
+  };
+
   const handleAddVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isSupabaseConfigured) {
@@ -83,17 +94,22 @@ export const VehicleList: React.FC = () => {
       localStorage.setItem('mock_vehicles', JSON.stringify(updated));
       setIsAdding(false);
       setNewVehicle({ brand: '', model: '', year: new Date().getFullYear(), plate: '', mileage: 0, status: 'active' });
+      setNewPhotoFile(null);
       return;
     }
 
-    const { error } = await supabase
-      .from('vehicles')
-      .insert([newVehicle]);
+    setFormLoading(true);
+    let photo_url: string | null = null;
+    if (newPhotoFile) photo_url = await uploadVehiclePhoto(newPhotoFile);
+
+    const { error } = await supabase.from('vehicles').insert([{ ...newVehicle, photo_url }]);
+    setFormLoading(false);
 
     if (!error) {
       setIsAdding(false);
       fetchVehicles();
       setNewVehicle({ brand: '', model: '', year: new Date().getFullYear(), plate: '', mileage: 0, status: 'active' });
+      setNewPhotoFile(null);
       addToast('Veículo cadastrado com sucesso!', 'success');
     } else {
       addToast(error.message || 'Erro ao cadastrar veículo.', 'error');
@@ -109,8 +125,13 @@ export const VehicleList: React.FC = () => {
       setVehicles(updated);
       localStorage.setItem('mock_vehicles', JSON.stringify(updated));
       setEditingVehicle(null);
+      setEditPhotoFile(null);
       return;
     }
+
+    setFormLoading(true);
+    let photo_url = (editingVehicle as any).photo_url ?? null;
+    if (editPhotoFile) photo_url = await uploadVehiclePhoto(editPhotoFile);
 
     const { error } = await supabase
       .from('vehicles')
@@ -120,12 +141,15 @@ export const VehicleList: React.FC = () => {
         year: editingVehicle.year,
         plate: editingVehicle.plate,
         mileage: editingVehicle.mileage,
-        status: editingVehicle.status
+        status: editingVehicle.status,
+        photo_url
       })
       .eq('id', editingVehicle.id);
+    setFormLoading(false);
 
     if (!error) {
       setEditingVehicle(null);
+      setEditPhotoFile(null);
       fetchVehicles();
       addToast('Veículo atualizado com sucesso!', 'success');
     } else {
@@ -205,25 +229,28 @@ export const VehicleList: React.FC = () => {
               key={v.id}
               className="bg-slate-900 rounded-2xl border border-slate-800 shadow-elegant overflow-hidden group hover:border-primary-500/50 transition-all"
             >
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="p-3 bg-slate-800 rounded-xl group-hover:bg-primary-500/20 transition-colors">
-                    <Car className="text-slate-400 group-hover:text-primary-400" size={24} />
+              <div className="relative h-36 bg-slate-800 overflow-hidden">
+                {(v as any).photo_url ? (
+                  <img src={(v as any).photo_url} alt={`${v.brand} ${v.model}`} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Car size={40} className="text-slate-600" />
                   </div>
-                  <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${v.status === 'active' ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20' :
-                    v.status === 'maintenance' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                      'bg-red-500/10 text-red-400 border border-red-500/20'
-                    }`}>
-                    {v.status === 'active' ? <CheckCircle2 size={12} /> :
-                      v.status === 'maintenance' ? <AlertCircle size={12} /> : <XCircle size={12} />}
-                    {v.status === 'active' ? 'Ativo' : v.status === 'maintenance' ? 'Manutenção' : 'Inativo'}
-                  </div>
+                )}
+                <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-sm ${v.status === 'active' ? 'bg-primary-500/80 text-white' :
+                    v.status === 'maintenance' ? 'bg-amber-500/80 text-white' :
+                      'bg-red-500/80 text-white'
+                  }`}>
+                  {v.status === 'active' ? <CheckCircle2 size={12} /> :
+                    v.status === 'maintenance' ? <AlertCircle size={12} /> : <XCircle size={12} />}
+                  {v.status === 'active' ? 'Ativo' : v.status === 'maintenance' ? 'Manutenção' : 'Inativo'}
                 </div>
-
+              </div>
+              <div className="p-5">
                 <h3 className="text-lg font-bold text-white">{v.brand} {v.model}</h3>
                 <p className="text-slate-500 text-sm font-medium uppercase tracking-widest mt-1">{v.plate}</p>
 
-                <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-800">
+                <div className="grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-slate-800">
                   <div>
                     <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Ano</p>
                     <p className="text-sm font-bold text-slate-200">{v.year}</p>
@@ -343,6 +370,43 @@ export const VehicleList: React.FC = () => {
                       className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                     />
                   </div>
+                  {/* Photo Upload */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Foto do Veículo</label>
+                    {editingVehicle && (editingVehicle as any).photo_url && !editPhotoFile && (
+                      <div className="mb-2 w-full h-28 rounded-xl overflow-hidden relative">
+                        <img src={(editingVehicle as any).photo_url} alt="Foto atual" className="w-full h-full object-cover" />
+                        <button type="button" onClick={() => setEditingVehicle({ ...editingVehicle, photo_url: null } as any)}
+                          className="absolute top-1.5 right-1.5 p-1 bg-black/60 rounded-full text-white hover:bg-red-600 transition-colors">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
+                    <label htmlFor="vehicle-photo" className="border-2 border-dashed border-slate-700 hover:border-primary-500/50 rounded-xl p-4 flex items-center gap-3 cursor-pointer transition-colors">
+                      <input
+                        type="file" id="vehicle-photo" accept="image/*" className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          if (editingVehicle) setEditPhotoFile(file);
+                          else setNewPhotoFile(file);
+                        }}
+                      />
+                      <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center shrink-0">
+                        <Upload size={18} className="text-slate-400" />
+                      </div>
+                      <div className="min-w-0">
+                        {(editingVehicle ? editPhotoFile : newPhotoFile) ? (
+                          <p className="text-sm text-primary-400 font-medium truncate">{(editingVehicle ? editPhotoFile : newPhotoFile)!.name}</p>
+                        ) : (
+                          <>
+                            <p className="text-sm text-slate-400 font-medium">Clique para anexar foto</p>
+                            <p className="text-xs text-slate-600">JPG, PNG, WEBP</p>
+                          </>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+
                   {editingVehicle && (
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Status</label>
@@ -360,16 +424,17 @@ export const VehicleList: React.FC = () => {
                   <div className="flex gap-3 pt-4">
                     <button
                       type="button"
-                      onClick={() => { setIsAdding(false); setEditingVehicle(null); }}
+                      onClick={() => { setIsAdding(false); setEditingVehicle(null); setNewPhotoFile(null); setEditPhotoFile(null); }}
                       className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold border border-slate-700 rounded-xl transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-primary-500/20"
+                      disabled={formLoading}
+                      className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-primary-500/20 disabled:opacity-60"
                     >
-                      {editingVehicle ? 'Atualizar' : 'Salvar'}
+                      {formLoading ? 'Salvando...' : editingVehicle ? 'Atualizar' : 'Salvar'}
                     </button>
                   </div>
                 </form>
