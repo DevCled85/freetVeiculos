@@ -311,7 +311,7 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
               <button
                 disabled={loading}
                 onClick={handleSubmit}
-                className="flex-[2] bg-primary-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-primary-700 transition-all shadow-lg shadow-primary-200"
+                className="flex-[2] bg-primary-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-primary-700 transition-all shadow-lg shadow-primary-900/50"
               >
                 {loading ? 'Enviando...' : (
                   <>

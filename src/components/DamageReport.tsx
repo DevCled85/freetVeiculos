@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, Vehicle, Damage, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
-import { 
-  AlertTriangle, 
-  Camera, 
-  Upload, 
-  CheckCircle2, 
-  Clock, 
+import {
+  AlertTriangle,
+  Camera,
+  Upload,
+  CheckCircle2,
+  Clock,
   Filter,
   Plus,
   X,
@@ -133,7 +133,7 @@ export const DamageReport: React.FC = () => {
       .from('damages')
       .update({ status: 'resolved' })
       .eq('id', resolvingId);
-    
+
     if (!error) {
       setResolvingId(null);
       fetchDamages();
@@ -145,15 +145,15 @@ export const DamageReport: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex gap-2">
-          <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 flex items-center gap-2 hover:bg-slate-50">
+          <button className="px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm font-bold text-slate-300 flex items-center gap-2 hover:bg-slate-800">
             <Filter size={16} />
             Filtros
           </button>
         </div>
         {profile?.role === 'driver' && (
-          <button 
+          <button
             onClick={() => setIsAdding(true)}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-red-100 transition-all"
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-red-900/50 transition-all"
           >
             <Plus size={20} />
             Reportar Avaria
@@ -168,29 +168,27 @@ export const DamageReport: React.FC = () => {
             <motion.div
               layout
               key={damage.id}
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-elegant flex flex-col md:flex-row gap-6"
+              className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-elegant flex flex-col md:flex-row gap-6"
             >
-              <div className="w-full md:w-32 h-32 bg-slate-100 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+              <div className="w-full md:w-32 h-32 bg-slate-800/50 rounded-xl flex items-center justify-center overflow-hidden shrink-0 border border-slate-700/50">
                 {damage.photo_url ? (
                   <img src={damage.photo_url} alt="Damage" className="w-full h-full object-cover" />
                 ) : (
-                  <Camera size={32} className="text-slate-300" />
+                  <Camera size={32} className="text-slate-500" />
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      damage.priority === 'high' ? 'bg-red-100 text-red-600' :
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${damage.priority === 'high' ? 'bg-red-100 text-red-600' :
                       damage.priority === 'medium' ? 'bg-amber-100 text-amber-600' :
-                      'bg-blue-100 text-blue-600'
-                    }`}>
+                        'bg-blue-100 text-blue-600'
+                      }`}>
                       {damage.priority}
                     </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      damage.status === 'resolved' ? 'bg-primary-100 text-primary-600' : 'bg-slate-100 text-slate-500'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${damage.status === 'resolved' ? 'bg-primary-100 text-primary-600' : 'bg-slate-100 text-slate-500'
+                      }`}>
                       {damage.status}
                     </span>
                   </div>
@@ -199,18 +197,18 @@ export const DamageReport: React.FC = () => {
                   </span>
                 </div>
 
-                <h4 className="text-lg font-bold text-slate-900 mb-1">
+                <h4 className="text-lg font-bold text-white mb-1">
                   {damage.vehicles?.brand} {damage.vehicles?.model}
                 </h4>
-                <p className="text-sm text-slate-500 font-medium mb-3 uppercase tracking-widest">
+                <p className="text-sm text-slate-400 font-medium mb-3 uppercase tracking-widest">
                   {damage.vehicles?.plate}
                 </p>
-                <p className="text-slate-600 text-sm leading-relaxed">{damage.description}</p>
+                <p className="text-slate-300 text-sm leading-relaxed">{damage.description}</p>
               </div>
 
               {profile?.role === 'supervisor' && damage.status === 'pending' && (
                 <div className="flex items-center shrink-0">
-                  <button 
+                  <button
                     onClick={() => setResolvingId(damage.id)}
                     className="w-full md:w-auto px-4 py-2 bg-primary-50 text-primary-600 font-bold rounded-xl hover:bg-primary-100 transition-colors flex items-center justify-center gap-2"
                   >
@@ -222,9 +220,9 @@ export const DamageReport: React.FC = () => {
             </motion.div>
           ))
         ) : (
-          <div className="bg-white p-12 rounded-3xl border border-slate-200 border-dashed text-center">
-            <AlertTriangle size={48} className="text-slate-200 mx-auto mb-4" />
-            <p className="text-slate-500 font-medium">Nenhuma avaria registrada</p>
+          <div className="bg-slate-900 p-12 rounded-3xl border border-slate-800 border-dashed text-center">
+            <AlertTriangle size={48} className="text-slate-600 mx-auto mb-4" />
+            <p className="text-slate-400 font-medium">Nenhuma avaria registrada</p>
           </div>
         )}
       </div>
@@ -233,7 +231,7 @@ export const DamageReport: React.FC = () => {
       <AnimatePresence>
         {resolvingId && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -244,18 +242,18 @@ export const DamageReport: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-3xl shadow-2xl z-[70] overflow-hidden"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-[70] overflow-hidden"
             >
               <div className="p-8 text-center">
-                <div className="w-16 h-16 bg-primary-50 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-primary-500/10 border border-primary-500/20 text-primary-400 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle2 size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Resolver Avaria?</h3>
-                <p className="text-slate-500 text-sm mb-6">Confirme que o problema foi devidamente corrigido e o veículo está pronto para uso.</p>
+                <h3 className="text-xl font-bold text-white mb-2">Resolver Avaria?</h3>
+                <p className="text-slate-400 text-sm mb-6">Confirme que o problema foi devidamente corrigido e o veículo está pronto para uso.</p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setResolvingId(null)}
-                    className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                    className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold rounded-xl transition-colors"
                   >
                     Cancelar
                   </button>
@@ -276,7 +274,7 @@ export const DamageReport: React.FC = () => {
       <AnimatePresence>
         {isAdding && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -287,12 +285,12 @@ export const DamageReport: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-[70] overflow-hidden"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-[70] overflow-hidden"
             >
               <div className="p-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-slate-900">Reportar Avaria</h3>
-                  <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600">
+                  <h3 className="text-xl font-bold text-white">Reportar Avaria</h3>
+                  <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-200">
                     <X size={24} />
                   </button>
                 </div>
@@ -303,8 +301,8 @@ export const DamageReport: React.FC = () => {
                     <select
                       required
                       value={newDamage.vehicle_id}
-                      onChange={(e) => setNewDamage({...newDamage, vehicle_id: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                      onChange={(e) => setNewDamage({ ...newDamage, vehicle_id: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                     >
                       <option value="">Selecione um veículo</option>
                       {vehicles.map(v => (
@@ -318,8 +316,8 @@ export const DamageReport: React.FC = () => {
                     <textarea
                       required
                       value={newDamage.description}
-                      onChange={(e) => setNewDamage({...newDamage, description: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                      onChange={(e) => setNewDamage({ ...newDamage, description: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                       placeholder="Descreva o problema detalhadamente..."
                       rows={3}
                     />
@@ -332,14 +330,13 @@ export const DamageReport: React.FC = () => {
                         <button
                           key={p}
                           type="button"
-                          onClick={() => setNewDamage({...newDamage, priority: p as any})}
-                          className={`py-2 rounded-xl text-xs font-bold uppercase tracking-wider border-2 transition-all ${
-                            newDamage.priority === p 
-                              ? p === 'high' ? 'border-red-500 bg-red-50 text-red-600' :
-                                p === 'medium' ? 'border-amber-500 bg-amber-50 text-amber-600' :
-                                'border-blue-500 bg-blue-50 text-blue-600'
-                              : 'border-slate-100 bg-slate-50 text-slate-400'
-                          }`}
+                          onClick={() => setNewDamage({ ...newDamage, priority: p as any })}
+                          className={`py-2 rounded-xl text-xs font-bold uppercase tracking-wider border-2 transition-all ${newDamage.priority === p
+                            ? p === 'high' ? 'border-red-500/50 bg-red-500/10 text-red-400' :
+                              p === 'medium' ? 'border-amber-500/50 bg-amber-500/10 text-amber-400' :
+                                'border-blue-500/50 bg-blue-500/10 text-blue-400'
+                            : 'border-slate-700 bg-slate-800 text-slate-400'
+                            }`}
                         >
                           {p}
                         </button>
@@ -351,7 +348,7 @@ export const DamageReport: React.FC = () => {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-red-100 flex items-center justify-center gap-2"
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-red-900/50 flex items-center justify-center gap-2"
                     >
                       {loading ? 'Enviando...' : (
                         <>

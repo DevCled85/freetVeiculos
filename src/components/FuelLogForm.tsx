@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, Vehicle, FuelLog, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
-import { 
-  Fuel, 
-  Car, 
-  Calendar, 
-  DollarSign, 
-  Droplets, 
+import {
+  Fuel,
+  Car,
+  Calendar,
+  DollarSign,
+  Droplets,
   TrendingUp,
   CheckCircle2,
   History,
@@ -103,13 +103,13 @@ export const FuelLogForm: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+        <h3 className="text-lg font-bold text-white flex items-center gap-2">
           <History size={20} className="text-slate-400" />
           Histórico Recente
         </h3>
-        <button 
+        <button
           onClick={() => setIsAdding(true)}
-          className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-primary-100 transition-all"
+          className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-primary-900/50 transition-all"
         >
           <Plus size={20} />
           Registrar Abastecimento
@@ -123,22 +123,22 @@ export const FuelLogForm: React.FC = () => {
             <motion.div
               layout
               key={log.id}
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-elegant flex flex-col md:flex-row gap-6 items-center"
+              className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-elegant flex flex-col md:flex-row gap-6 items-center"
             >
-              <div className="p-4 bg-primary-50 text-primary-600 rounded-2xl shrink-0">
+              <div className="p-4 bg-primary-500/10 text-primary-400 rounded-2xl shrink-0">
                 <Fuel size={32} />
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-1">
-                  <h4 className="text-lg font-bold text-slate-900">
+                  <h4 className="text-lg font-bold text-white">
                     {log.vehicles?.brand} {log.vehicles?.model}
                   </h4>
                   <span className="text-xs text-slate-400">
                     {new Date(log.date).toLocaleDateString('pt-BR')}
                   </span>
                 </div>
-                <p className="text-sm text-slate-500 font-medium uppercase tracking-widest mb-4">
+                <p className="text-sm text-slate-400 font-medium uppercase tracking-widest mb-4">
                   {log.vehicles?.plate}
                 </p>
 
@@ -147,21 +147,21 @@ export const FuelLogForm: React.FC = () => {
                     <Droplets size={16} className="text-slate-400" />
                     <div>
                       <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Litros</p>
-                      <p className="text-sm font-bold text-slate-700">{log.liters}L</p>
+                      <p className="text-sm font-bold text-slate-200">{log.liters}L</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign size={16} className="text-slate-400" />
                     <div>
                       <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Valor</p>
-                      <p className="text-sm font-bold text-slate-700">R$ {log.value.toFixed(2)}</p>
+                      <p className="text-sm font-bold text-slate-200">R$ {log.value.toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <TrendingUp size={16} className="text-slate-400" />
                     <div>
                       <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">KM</p>
-                      <p className="text-sm font-bold text-slate-700">{log.mileage.toLocaleString()}</p>
+                      <p className="text-sm font-bold text-slate-200">{log.mileage.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
@@ -169,9 +169,9 @@ export const FuelLogForm: React.FC = () => {
             </motion.div>
           ))
         ) : (
-          <div className="bg-white p-12 rounded-3xl border border-slate-200 border-dashed text-center">
-            <Fuel size={48} className="text-slate-200 mx-auto mb-4" />
-            <p className="text-slate-500 font-medium">Nenhum abastecimento registrado</p>
+          <div className="bg-slate-900 p-12 rounded-3xl border border-slate-800 border-dashed text-center">
+            <Fuel size={48} className="text-slate-600 mx-auto mb-4" />
+            <p className="text-slate-400 font-medium">Nenhum abastecimento registrado</p>
           </div>
         )}
       </div>
@@ -180,7 +180,7 @@ export const FuelLogForm: React.FC = () => {
       <AnimatePresence>
         {isAdding && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -191,12 +191,12 @@ export const FuelLogForm: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-[70] overflow-hidden"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-[70] overflow-hidden"
             >
               <div className="p-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-slate-900">Registrar Abastecimento</h3>
-                  <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600">
+                  <h3 className="text-xl font-bold text-white">Registrar Abastecimento</h3>
+                  <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-200">
                     <X size={24} />
                   </button>
                 </div>
@@ -207,8 +207,8 @@ export const FuelLogForm: React.FC = () => {
                     <select
                       required
                       value={newLog.vehicle_id}
-                      onChange={(e) => setNewLog({...newLog, vehicle_id: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                      onChange={(e) => setNewLog({ ...newLog, vehicle_id: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                     >
                       <option value="">Selecione um veículo</option>
                       {vehicles.map(v => (
@@ -224,8 +224,8 @@ export const FuelLogForm: React.FC = () => {
                         type="number"
                         required
                         value={newLog.mileage}
-                        onChange={(e) => setNewLog({...newLog, mileage: parseInt(e.target.value)})}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                        onChange={(e) => setNewLog({ ...newLog, mileage: parseInt(e.target.value) })}
+                        className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                       />
                     </div>
                     <div>
@@ -234,8 +234,8 @@ export const FuelLogForm: React.FC = () => {
                         type="date"
                         required
                         value={newLog.date}
-                        onChange={(e) => setNewLog({...newLog, date: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                        onChange={(e) => setNewLog({ ...newLog, date: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                       />
                     </div>
                   </div>
@@ -248,8 +248,8 @@ export const FuelLogForm: React.FC = () => {
                         step="0.01"
                         required
                         value={newLog.liters}
-                        onChange={(e) => setNewLog({...newLog, liters: parseFloat(e.target.value)})}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                        onChange={(e) => setNewLog({ ...newLog, liters: parseFloat(e.target.value) })}
+                        className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                       />
                     </div>
                     <div>
@@ -259,8 +259,8 @@ export const FuelLogForm: React.FC = () => {
                         step="0.01"
                         required
                         value={newLog.value}
-                        onChange={(e) => setNewLog({...newLog, value: parseFloat(e.target.value)})}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                        onChange={(e) => setNewLog({ ...newLog, value: parseFloat(e.target.value) })}
+                        className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                       />
                     </div>
                   </div>
@@ -269,7 +269,7 @@ export const FuelLogForm: React.FC = () => {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary-100 flex items-center justify-center gap-2"
+                      className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary-900/50 flex items-center justify-center gap-2"
                     >
                       {loading ? 'Salvando...' : (
                         <>

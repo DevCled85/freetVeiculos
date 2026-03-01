@@ -154,7 +154,7 @@ export const VehicleList: React.FC = () => {
             placeholder="Buscar por marca, modelo ou placa..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
           />
         </div>
         <button
@@ -170,7 +170,7 @@ export const VehicleList: React.FC = () => {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-48 bg-white rounded-2xl border border-slate-100 animate-pulse"></div>
+            <div key={i} className="h-48 bg-slate-900 rounded-2xl border border-slate-800 animate-pulse"></div>
           ))}
         </div>
       ) : (
@@ -181,16 +181,16 @@ export const VehicleList: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               key={v.id}
-              className="bg-white rounded-2xl border border-slate-200 shadow-elegant overflow-hidden group hover:border-primary-200 transition-all"
+              className="bg-slate-900 rounded-2xl border border-slate-800 shadow-elegant overflow-hidden group hover:border-primary-500/50 transition-all"
             >
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="p-3 bg-slate-50 rounded-xl group-hover:bg-primary-50 transition-colors">
-                    <Car className="text-slate-600 group-hover:text-primary-600" size={24} />
+                  <div className="p-3 bg-slate-800 rounded-xl group-hover:bg-primary-500/20 transition-colors">
+                    <Car className="text-slate-400 group-hover:text-primary-400" size={24} />
                   </div>
-                  <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${v.status === 'active' ? 'bg-primary-50 text-primary-600' :
-                      v.status === 'maintenance' ? 'bg-amber-50 text-amber-600' :
-                        'bg-red-50 text-red-600'
+                  <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${v.status === 'active' ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20' :
+                    v.status === 'maintenance' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                      'bg-red-500/10 text-red-400 border border-red-500/20'
                     }`}>
                     {v.status === 'active' ? <CheckCircle2 size={12} /> :
                       v.status === 'maintenance' ? <AlertCircle size={12} /> : <XCircle size={12} />}
@@ -198,31 +198,31 @@ export const VehicleList: React.FC = () => {
                   </div>
                 </div>
 
-                <h3 className="text-lg font-bold text-slate-900">{v.brand} {v.model}</h3>
+                <h3 className="text-lg font-bold text-white">{v.brand} {v.model}</h3>
                 <p className="text-slate-500 text-sm font-medium uppercase tracking-widest mt-1">{v.plate}</p>
 
-                <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-50">
+                <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-800">
                   <div>
                     <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Ano</p>
-                    <p className="text-sm font-bold text-slate-700">{v.year}</p>
+                    <p className="text-sm font-bold text-slate-200">{v.year}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">KM Atual</p>
-                    <p className="text-sm font-bold text-slate-700">{v.mileage.toLocaleString()} km</p>
+                    <p className="text-sm font-bold text-slate-200">{v.mileage.toLocaleString()} km</p>
                   </div>
                 </div>
               </div>
 
-              <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+              <div className="px-6 py-4 bg-slate-800/50 border-t border-slate-800 flex items-center justify-between">
                 <button
                   onClick={() => setEditingVehicle(v)}
-                  className="text-slate-400 hover:text-primary-600 transition-colors"
+                  className="text-slate-500 hover:text-primary-400 transition-colors"
                 >
                   <Edit2 size={18} />
                 </button>
                 <button
                   onClick={() => setDeletingId(v.id)}
-                  className="text-slate-400 hover:text-red-600 transition-colors"
+                  className="text-slate-500 hover:text-red-400 transition-colors"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -247,10 +247,10 @@ export const VehicleList: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-[70] overflow-hidden"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-[70] overflow-hidden"
             >
               <div className="p-8">
-                <h3 className="text-xl font-bold text-slate-900 mb-6">
+                <h3 className="text-xl font-bold text-white mb-6">
                   {editingVehicle ? 'Editar Veículo' : 'Novo Veículo'}
                 </h3>
                 <form onSubmit={editingVehicle ? handleEditVehicle : handleAddVehicle} className="space-y-4">
@@ -264,7 +264,7 @@ export const VehicleList: React.FC = () => {
                         onChange={(e) => editingVehicle
                           ? setEditingVehicle({ ...editingVehicle, brand: e.target.value })
                           : setNewVehicle({ ...newVehicle, brand: e.target.value })}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                         placeholder="Ex: Toyota"
                       />
                     </div>
@@ -277,7 +277,7 @@ export const VehicleList: React.FC = () => {
                         onChange={(e) => editingVehicle
                           ? setEditingVehicle({ ...editingVehicle, model: e.target.value })
                           : setNewVehicle({ ...newVehicle, model: e.target.value })}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                         placeholder="Ex: Hilux"
                       />
                     </div>
@@ -292,7 +292,7 @@ export const VehicleList: React.FC = () => {
                         onChange={(e) => editingVehicle
                           ? setEditingVehicle({ ...editingVehicle, year: parseInt(e.target.value) })
                           : setNewVehicle({ ...newVehicle, year: parseInt(e.target.value) })}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                       />
                     </div>
                     <div>
@@ -304,7 +304,7 @@ export const VehicleList: React.FC = () => {
                         onChange={(e) => editingVehicle
                           ? setEditingVehicle({ ...editingVehicle, plate: e.target.value.toUpperCase() })
                           : setNewVehicle({ ...newVehicle, plate: e.target.value.toUpperCase() })}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                         placeholder="ABC-1234"
                       />
                     </div>
@@ -318,7 +318,7 @@ export const VehicleList: React.FC = () => {
                       onChange={(e) => editingVehicle
                         ? setEditingVehicle({ ...editingVehicle, mileage: parseInt(e.target.value) })
                         : setNewVehicle({ ...newVehicle, mileage: parseInt(e.target.value) })}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                     />
                   </div>
                   {editingVehicle && (
@@ -327,7 +327,7 @@ export const VehicleList: React.FC = () => {
                       <select
                         value={editingVehicle.status}
                         onChange={(e) => setEditingVehicle({ ...editingVehicle, status: e.target.value as any })}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                       >
                         <option value="active">Ativo</option>
                         <option value="maintenance">Manutenção</option>
@@ -339,13 +339,13 @@ export const VehicleList: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => { setIsAdding(false); setEditingVehicle(null); }}
-                      className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                      className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold border border-slate-700 rounded-xl transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-primary-200"
+                      className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-primary-500/20"
                     >
                       {editingVehicle ? 'Atualizar' : 'Salvar'}
                     </button>
@@ -372,18 +372,18 @@ export const VehicleList: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-3xl shadow-2xl z-[70] overflow-hidden"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-[70] overflow-hidden"
             >
               <div className="p-8 text-center">
-                <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Trash2 size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Excluir Veículo?</h3>
-                <p className="text-slate-500 text-sm mb-6">Esta ação não pode ser desfeita. O veículo será removido permanentemente da frota.</p>
+                <h3 className="text-xl font-bold text-white mb-2">Excluir Veículo?</h3>
+                <p className="text-slate-400 text-sm mb-6">Esta ação não pode ser desfeita. O veículo será removido permanentemente da frota.</p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setDeletingId(null)}
-                    className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                    className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold rounded-xl transition-colors"
                   >
                     Cancelar
                   </button>

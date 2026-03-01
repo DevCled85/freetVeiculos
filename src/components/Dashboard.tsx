@@ -29,9 +29,9 @@ const inputCls = 'w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rou
 
 const RoleBadge = ({ role }: { role: string }) =>
   role === 'supervisor' ? (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-primary-100 text-primary-700"><ShieldCheck size={11} /> Supervisor</span>
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-primary-500/10 text-primary-400 border border-primary-500/20"><ShieldCheck size={11} /> Supervisor</span>
   ) : (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600"><Car size={11} /> Motorista</span>
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700"><Car size={11} /> Motorista</span>
   );
 
 // ─── Modal Wrapper ─────────────────────────────────────────────────────────────
@@ -43,8 +43,8 @@ const ModalWrapper: React.FC<{ show: boolean; onClose: () => void; children: Rea
         className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
         <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 relative">
-          <button onClick={onClose} className="absolute top-5 right-5 p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors"><X size={20} /></button>
+          className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md p-8 relative">
+          <button onClick={onClose} className="absolute top-5 right-5 p-2 rounded-xl hover:bg-slate-800 text-slate-400 transition-colors"><X size={20} /></button>
           {children}
         </motion.div>
       </motion.div>
@@ -74,6 +74,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [editError, setEditError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserProfile | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteChecklistId, setDeleteChecklistId] = useState<string | null>(null);
+  const [deleteChecklistLoading, setDeleteChecklistLoading] = useState(false);
 
   // Checklists
   const [checklists, setChecklists] = useState<ChecklistRecord[]>([]);
@@ -142,6 +144,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           if (profile.role === 'supervisor' && payload.eventType === 'INSERT') {
             addToast('🔔 Novo checklist recebido de um motorista!', 'info', 5000);
           }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_items' }, () => {
+          if (profile.role === 'supervisor') fetchChecklists();
+          else fetchChecklists(profile.id);
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
           fetchStats();
@@ -213,19 +219,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     finally { setDeleteLoading(false); }
   };
 
-  const deleteChecklist = async (clId: string) => {
+  const handleDeleteChecklist = async () => {
+    if (!deleteChecklistId) return;
+    setDeleteChecklistLoading(true);
     try {
-      const { error: itemsError } = await supabase.from('checklist_items').delete().eq('checklist_id', clId);
+      const { error: itemsError } = await supabase.from('checklist_items').delete().eq('checklist_id', deleteChecklistId);
       if (itemsError) throw itemsError;
 
-      const { error: clError } = await supabase.from('checklists').delete().eq('id', clId);
+      const { error: clError } = await supabase.from('checklists').delete().eq('id', deleteChecklistId);
       if (clError) throw clError;
 
       addToast('Checklist removido.', 'info');
+      setDeleteChecklistId(null);
       fetchChecklists(profile?.role === 'supervisor' ? undefined : profile?.id);
     } catch (err: any) {
       console.error('Delete error:', err);
       addToast(err.message || 'Erro ao deletar checklist.', 'error');
+      setDeleteChecklistId(null);
+    } finally {
+      setDeleteChecklistLoading(false);
     }
   };
 
@@ -334,7 +346,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
             {/* Buttons for Supervisor */}
             {isSupervisor && !isResolved && (
-              <button onClick={() => deleteChecklist(cl.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors" title="Deletar checklist permanentemente"><Trash2 size={14} /></button>
+              <button onClick={() => setDeleteChecklistId(cl.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors" title="Deletar checklist permanentemente"><Trash2 size={14} /></button>
             )}
             {isSupervisor && hasIssues && !isResolved && (
               <button onClick={() => startResolveChecklist(cl)} className="px-2 py-1 flex items-center gap-1 text-xs font-bold bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-colors">
@@ -343,7 +355,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             )}
             {/* Buttons for Driver */}
             {!isSupervisor && !isResolved && (
-              <button onClick={() => deleteChecklist(cl.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors" title="Deletar checklist"><Trash2 size={14} /></button>
+              <button onClick={() => setDeleteChecklistId(cl.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors" title="Deletar checklist"><Trash2 size={14} /></button>
             )}
 
             <button onClick={() => setExpandedChecklist(expanded ? null : cl.id)} className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
@@ -356,7 +368,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           {expanded && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t border-slate-800 bg-slate-800/20">
               <div className="p-4 space-y-2">
-                {(cl.checklist_items || []).map((item) => (
+                {[...(cl.checklist_items || [])].sort((a, b) => {
+                  if (a.is_ok === b.is_ok) return a.item_name.localeCompare(b.item_name);
+                  return a.is_ok ? 1 : -1;
+                }).map((item) => (
                   <div key={item.id} className="flex items-start gap-3 p-2.5 rounded-xl">
                     <span className={`mt-0.5 shrink-0 ${item.is_ok ? 'text-emerald-400' : 'text-red-400'}`}>{item.is_ok ? <CheckCircle2 size={16} /> : <X size={16} />}</span>
                     <div>
@@ -412,6 +427,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </div>
     );
   };
+
+  const deleteChecklistModal = (
+    <ModalWrapper show={!!deleteChecklistId} onClose={() => setDeleteChecklistId(null)}>
+      <div className="text-center">
+        <div className="w-16 h-16 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 size={28} /></div>
+        <h2 className="text-xl font-bold text-white mb-2">Remover Checklist?</h2>
+        <p className="text-sm text-slate-400 mb-6">Tem certeza que deseja remover este checklist? Esta ação não pode ser desfeita e todos os itens serão apagados.</p>
+        <div className="flex gap-3">
+          <button onClick={() => setDeleteChecklistId(null)} className="flex-1 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold hover:bg-slate-700 transition-colors">Cancelar</button>
+          <button onClick={handleDeleteChecklist} disabled={deleteChecklistLoading} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-500 disabled:opacity-60 shadow-[0_0_15px_-3px_rgba(239,68,68,0.4)] transition-colors">
+            {deleteChecklistLoading ? 'Removendo...' : 'Remover'}
+          </button>
+        </div>
+      </div>
+    </ModalWrapper>
+  );
 
   // ── Supervisor View ────────────────────────────────────────────────────────────
 
@@ -493,11 +524,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* Checklists Panel */}
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
-          <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-slate-900/50">
-            <div className="p-2 bg-slate-800 border border-slate-700 text-primary-400 rounded-xl"><FileText size={18} /></div>
-            <h3 className="text-base font-bold text-white">Checklists Recebidos (Pendentes)</h3>
-            <span className="ml-auto text-xs font-bold bg-primary-500/10 text-primary-400 border border-primary-500/20 px-2.5 py-1 rounded-full">{pendingChecklists.length}</span>
+        <div className="bg-slate-900 rounded-2xl border border-amber-500/30 shadow-2xl overflow-hidden shadow-amber-500/5">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-amber-500/10">
+            <div className="p-2 bg-amber-500/20 text-amber-500 rounded-xl"><AlertTriangle size={18} /></div>
+            <h3 className="text-base font-bold text-amber-500">Checklists Recebidos (Pendentes)</h3>
+            <span className="ml-auto text-xs font-bold bg-amber-500/20 text-amber-500 px-2.5 py-1 rounded-full">{pendingChecklists.length}</span>
           </div>
           <div className="p-4 space-y-3 max-h-96 overflow-y-auto scrollbar-dark">
             {pendingChecklists.length === 0
@@ -507,11 +538,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* Resolved Checklists */}
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
           <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-slate-800/20">
-            <div className="p-2 bg-slate-800 text-slate-400 rounded-xl border border-slate-700"><CheckCircle2 size={18} /></div>
+            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl"><CheckCircle2 size={18} /></div>
             <h3 className="text-base font-bold text-white">Histórico Resolvido</h3>
-            <span className="ml-auto text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 px-2.5 py-1 rounded-full">{resolvedChecklists.length}</span>
+            <span className="ml-auto text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">{resolvedChecklists.length}</span>
           </div>
           <div className="p-4 space-y-3 max-h-80 overflow-y-auto scrollbar-dark">
             {resolvedChecklists.length === 0
@@ -637,6 +668,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
         </ModalWrapper>
+        {deleteChecklistModal}
       </div>
     );
   }
@@ -698,19 +730,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       </div>
 
+      {/* Driver Pending Checklists */}
+      {checklists.filter(c => c.status === 'pending').length > 0 && (
+        <div className="bg-slate-900 rounded-2xl border border-amber-500/30 shadow-2xl overflow-hidden shadow-amber-500/5">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-amber-500/10">
+            <div className="p-2 bg-amber-500/20 text-amber-500 rounded-xl"><AlertTriangle size={18} /></div>
+            <h3 className="text-base font-bold text-amber-500">Meus Checklists Pendentes</h3>
+            <span className="ml-auto text-xs font-bold bg-amber-500/20 text-amber-500 px-2.5 py-1 rounded-full">{checklists.filter(c => c.status === 'pending').length}</span>
+          </div>
+          <div className="p-4 space-y-3 max-h-96 overflow-y-auto scrollbar-dark">
+            {checklists.filter(c => c.status === 'pending').map(cl => renderChecklistCard(cl, false))}
+          </div>
+        </div>
+      )}
+
       {/* Driver checklist history */}
       <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
         <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-slate-800/20">
           <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl"><FileText size={18} /></div>
-          <h3 className="text-base font-bold text-white">Meu Histórico de Checklists</h3>
-          <span className="ml-auto text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">{checklists.length}</span>
+          <h3 className="text-base font-bold text-white">Meu Histórico de Checklists (Resolvidos)</h3>
+          <span className="ml-auto text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">{checklists.filter(c => c.status === 'resolved').length}</span>
         </div>
         <div className="p-4 space-y-3 max-h-96 overflow-y-auto scrollbar-dark">
-          {checklists.length === 0
-            ? <div className="text-center py-6 text-slate-500 text-sm">Nenhum checklist realizado ainda.</div>
-            : checklists.map(cl => renderChecklistCard(cl, false))}
+          {checklists.filter(c => c.status === 'resolved').length === 0
+            ? <div className="text-center py-6 text-slate-500 text-sm">Nenhum checklist resolvido.</div>
+            : checklists.filter(c => c.status === 'resolved').map(cl => renderChecklistCard(cl, false))}
         </div>
       </div>
+      {deleteChecklistModal}
     </div>
   );
 };
