@@ -51,7 +51,7 @@ const navItems: NavItem[] = [
   { id: 'vehicles', label: 'Veículos', icon: Car, roles: ['supervisor'] },
   { id: 'checklist', label: 'Checklist', icon: ClipboardCheck, roles: ['driver'] },
   { id: 'damages', label: 'Avarias', icon: AlertTriangle, roles: ['driver', 'supervisor'] },
-  { id: 'fuel', label: 'Abastecimento', icon: Fuel, roles: ['driver'] },
+  { id: 'fuel', label: 'Abastecimento', icon: Fuel, roles: ['driver', 'supervisor'] },
   { id: 'reports', label: 'Relatórios', icon: FileText, roles: ['driver', 'supervisor'], comingSoon: true },
 ];
 

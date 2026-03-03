@@ -66,6 +66,7 @@ export type FuelLog = {
   liters: number;
   value: number;
   date: string;
+  photo_url?: string;
   created_at: string;
 };
 
