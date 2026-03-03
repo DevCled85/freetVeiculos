@@ -12,7 +12,8 @@ import {
   X,
   Car,
   Pencil,
-  Trash2
+  Trash2,
+  User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast, ToastContainer } from './Toast';
@@ -91,7 +92,7 @@ export const DamageReport: React.FC = () => {
     }
     const { data } = await supabase
       .from('damages')
-      .select('*, vehicles(brand, model, plate)')
+      .select('*, vehicles(brand, model, plate), profiles!reported_by(full_name)')
       .order('created_at', { ascending: false });
     if (data) setDamages(data as any);
   };
@@ -392,8 +393,8 @@ export const DamageReport: React.FC = () => {
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${damage.priority === 'high' ? 'bg-red-100 text-red-600' :
                       damage.priority === 'medium' ? 'bg-amber-100 text-amber-600' :
                         'bg-blue-100 text-blue-600'
@@ -406,9 +407,17 @@ export const DamageReport: React.FC = () => {
                       {damage.status === 'resolved' ? 'RESOLVIDO' : 'PENDENTE'}
                     </span>
                   </div>
-                  <span className="text-xs text-slate-400">
-                    {new Date(damage.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })}
-                  </span>
+
+                  <div className="flex flex-col items-start sm:items-end gap-1">
+                    <span className="text-xs font-bold text-slate-400">
+                      {new Date(damage.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                    </span>
+                    {(damage as any).profiles?.full_name && (
+                      <span className="text-[10px] uppercase font-bold text-primary-400 tracking-wider">
+                        Motorista: {(damage as any).profiles.full_name.split(' ')[0]}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <h4 className="text-lg font-bold text-white mb-1 capitalize">
@@ -518,7 +527,7 @@ export const DamageReport: React.FC = () => {
                         <option value="">Selecione um veículo</option>
                         {vehicles.map(v => (
                           <option key={v.id} value={v.id}>
-                            {`${v.model.charAt(0).toUpperCase() + v.model.slice(1).toLowerCase()} / ${v.brand.charAt(0).toUpperCase() + v.brand.slice(1).toLowerCase()} (${v.plate})`}
+                            {`${v.model.charAt(0).toUpperCase() + v.model.slice(1).toLowerCase()} / ${v.brand.charAt(0).toUpperCase() + v.brand.slice(1).toLowerCase()} (${v.plate}${v.color ? ` | ${v.color}` : ''})`}
                           </option>
                         ))}
                       </select>
@@ -639,7 +648,7 @@ export const DamageReport: React.FC = () => {
                         <option value="">Selecione um veículo</option>
                         {vehicles.map(v => (
                           <option key={v.id} value={v.id}>
-                            {`${v.model.charAt(0).toUpperCase() + v.model.slice(1).toLowerCase()} / ${v.brand.charAt(0).toUpperCase() + v.brand.slice(1).toLowerCase()} (${v.plate})`}
+                            {`${v.model.charAt(0).toUpperCase() + v.model.slice(1).toLowerCase()} / ${v.brand.charAt(0).toUpperCase() + v.brand.slice(1).toLowerCase()} (${v.plate}${v.color ? ` | ${v.color}` : ''})`}
                           </option>
                         ))}
                       </select>
@@ -829,7 +838,19 @@ export const DamageReport: React.FC = () => {
                     {supervisorViewDamage.vehicles?.model} <span className="text-sm font-normal text-slate-400">/ {supervisorViewDamage.vehicles?.brand}</span>{' '}
                     <span className="font-mono text-slate-400 text-sm normal-case">({supervisorViewDamage.vehicles?.plate})</span>
                   </p>
-                  <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
+
+                  {/* Driver Name Section */}
+                  {(supervisorViewDamage as any).profiles?.full_name && (
+                    <div className="mt-4 mb-2 bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 flex items-center justify-between">
+                      <p className="text-[10px] uppercase font-bold text-slate-500">Reportado por</p>
+                      <p className="text-slate-200 text-sm font-semibold flex items-center gap-2">
+                        <User size={14} className="text-primary-400" />
+                        {(supervisorViewDamage as any).profiles.full_name.split(' ')[0]}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 mt-3">
                     <p className="text-sm text-slate-300 leading-relaxed">{supervisorViewDamage.description}</p>
                   </div>
                 </div>

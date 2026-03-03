@@ -15,10 +15,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useToast, ToastContainer } from './Toast';
 
 const MOCK_VEHICLES: Vehicle[] = [
-  { id: '1', brand: 'Toyota', model: 'Corolla', year: 2022, plate: 'ABC-1234', mileage: 15000, status: 'active', current_driver: 'João Silva', created_at: '' },
-  { id: '2', brand: 'Ford', model: 'Ranger', year: 2021, plate: 'XYZ-9876', mileage: 45000, status: 'maintenance', created_at: '' },
-  { id: '3', brand: 'Volkswagen', model: 'Gol', year: 2020, plate: 'KJH-4422', mileage: 80000, status: 'active', created_at: '' },
-  { id: '4', brand: 'Fiat', model: 'Strada', year: 2023, plate: 'FRT-9090', mileage: 5000, status: 'inactive', created_at: '' },
+  { id: '1', brand: 'Toyota', model: 'Corolla', year: 2022, plate: 'ABC-1234', color: 'Prata', mileage: 15000, status: 'active', current_driver: 'João Silva', created_at: '' },
+  { id: '2', brand: 'Ford', model: 'Ranger', year: 2021, plate: 'XYZ-9876', color: 'Branco', mileage: 45000, status: 'maintenance', created_at: '' },
+  { id: '3', brand: 'Volkswagen', model: 'Gol', year: 2020, plate: 'KJH-4422', color: 'Preto', mileage: 80000, status: 'active', created_at: '' },
+  { id: '4', brand: 'Fiat', model: 'Strada', year: 2023, plate: 'FRT-9090', color: 'Vermelho', mileage: 5000, status: 'inactive', created_at: '' },
 ];
 
 const CHECKLIST_ITEMS = [
@@ -256,7 +256,10 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
                       )}
                       <div className="text-left">
                         <p className="font-bold text-white capitalize">{v.model.toLowerCase()} <span className="text-sm font-normal text-slate-400">/ {v.brand.toLowerCase()}</span></p>
-                        <p className="text-sm text-slate-400 uppercase tracking-widest">{v.plate}</p>
+                        <p className="text-sm text-slate-400 uppercase tracking-widest">
+                          {v.plate}
+                          {v.color && <span className="capitalize text-slate-500 ml-2 border-l border-slate-700 pl-2">{v.color}</span>}
+                        </p>
                       </div>
                     </div>
                     {selectedVehicle === v.id && <CheckCircle2 className="relative text-primary-400 z-10 shrink-0" size={24} />}
@@ -296,6 +299,11 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
                 </div>
                 <span className="font-bold text-white">
                   {vehicles.find(v => v.id === selectedVehicle)?.plate}
+                  {vehicles.find(v => v.id === selectedVehicle)?.color && (
+                    <span className="capitalize text-slate-400 font-normal ml-2 border-l border-slate-700 pl-2">
+                      {vehicles.find(v => v.id === selectedVehicle)?.color}
+                    </span>
+                  )}
                 </span>
               </div>
               <button
