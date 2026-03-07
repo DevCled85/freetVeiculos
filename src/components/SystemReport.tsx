@@ -34,6 +34,7 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
     const [data, setData] = useState<ReportData | null>(null);
     const [loading, setLoading] = useState(true);
     const { addToast } = useToast();
+    const hasSavedRef = useRef(false);
 
     useEffect(() => {
         if (preloadedData) {
@@ -138,7 +139,8 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                 setData(finalData);
 
                 // Automagically save this generated report snapshot to the database if not preloaded
-                if (profile?.role === 'supervisor') {
+                if (profile?.role === 'supervisor' && !preloadedData && !hasSavedRef.current) {
+                    hasSavedRef.current = true;
                     try {
                         const monthName = new Date().toLocaleString('pt-BR', { month: 'long' });
                         const title = `Relatório Geral - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${new Date().getFullYear()}`;
@@ -163,63 +165,43 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
             }
         };
         fetchReportData();
-    }, [preloadedData, profile, addToast]); // Added dependencies
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [preloadedData]); // Removed profile and addToast to prevent infinite loops
 
     const handlePrint = () => {
         window.print();
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-100 z-[100] flex flex-col overflow-hidden print:bg-white print:z-auto print:static">
+        <div className={preloadedData ? "animate-fade-in" : "fixed inset-0 bg-slate-100 z-[100] flex flex-col overflow-hidden print:bg-white print:z-auto print:static"}>
             {/* Header bar (Not printed) */}
-            <div className={`bg-white text-slate-900 ${preloadedData ? '' : 'p-8 max-w-[210mm] mx-auto min-h-screen relative'}`} id="printable-report">
-
-                {/* Header (Only show if not preloaded, or maybe show always but with different buttons) */}
-                {!preloadedData && (
-                    <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-slate-200 print:mb-4 print:pb-2">
-                        <div>
-                            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-3">
-                                <Car size={32} className="text-primary-600" />
-                                FleetCheck
-                            </h1>
-                            <p className="text-sm text-slate-500 mt-1 font-medium">Relatório Geral do Sistema</p>
+            {!preloadedData && (
+                <div className="bg-slate-900 px-6 py-4 flex items-center justify-between shrink-0 print:hidden shadow-lg border-b border-slate-800">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary-500/20 text-primary-400 rounded-lg">
+                            <FileText size={20} />
                         </div>
-                        <div className="text-right">
-                            <p className="font-bold text-slate-800 text-lg">{new Date().toLocaleDateString('pt-BR')}</p>
-                            <p className="text-sm text-slate-500">
-                                Gerado por: <span className="font-bold text-slate-700">{profile?.full_name}</span>
-                            </p>
-                        </div>
+                        <h2 className="text-xl font-bold text-white">Relatório Geral do Sistema</h2>
                     </div>
-                )}
-
-                {/* Control Buttons (Only show if not preloaded) */}
-                {!preloadedData && (
-                    <div className="absolute top-8 right-8 flex gap-3 print:hidden">
+                    <div className="flex items-center gap-3">
                         <button
                             onClick={handlePrint}
-                            className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all"
+                            disabled={loading}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50 shadow-lg shadow-primary-900/50"
                         >
-                            <Download size={18} /> Imprimir / PDF
+                            <Printer size={18} /> Imprimir / PDF
                         </button>
                         {onClose && (
                             <button
                                 onClick={onClose}
-                                className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all"
+                                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors"
                             >
-                                <X size={18} /> Fechar
+                                <X size={24} />
                             </button>
                         )}
                     </div>
-                )}
-
-                {/* Print Title Only for Preloaded (optional fallback if they print the SavedReports wrapper) */}
-                {preloadedData && (
-                    <div className="hidden print:block mb-6 border-b-2 border-slate-200 pb-2">
-                        <h1 className="text-2xl font-extrabold text-slate-800">FleetCheck - Relatório Histórico</h1>
-                    </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {loading ? (
                 <div className="flex-1 flex flex-col items-center justify-center">
@@ -227,17 +209,25 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                     <p className="text-slate-500 font-medium">Buscando informações gerais da frota...</p>
                 </div>
             ) : data ? (
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 print:p-0 bg-slate-100 print:bg-white text-slate-800 scrollbar-dark">
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 print:p-0 bg-slate-100 print:bg-white text-slate-800 scrollbar-dark" id="printable-report">
                     <div className="max-w-5xl mx-auto bg-white print:shadow-none shadow-2xl print:border-0 border border-slate-200 rounded-2xl p-8 md:p-12 print:p-0">
                         {/* Report Header */}
                         <div className="border-b-2 border-slate-200 pb-6 mb-8 flex items-end justify-between">
                             <div>
-                                <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Relatório de Gestão <span className="text-primary-600">FleetCheck</span></h1>
+                                <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+                                    <Car size={32} className="text-primary-600 print:hidden text-slate-800" />
+                                    Relatório de Gestão <span className="text-primary-600">FleetCheck</span>
+                                </h1>
                                 <p className="text-slate-500 font-medium mt-1">Visão global da frota, consumos e avarias.</p>
                             </div>
                             <div className="text-right">
                                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Data de Emissão</p>
                                 <p className="text-lg font-bold text-slate-700">{new Date().toLocaleDateString('pt-BR')}</p>
+                                <p className="text-sm text-slate-500 mt-1">
+                                    Gerado por: <span className="font-bold text-slate-700">
+                                        {preloadedData ? 'Registro Histórico' : profile?.full_name}
+                                    </span>
+                                </p>
                             </div>
                         </div>
 
