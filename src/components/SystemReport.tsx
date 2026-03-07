@@ -27,9 +27,11 @@ interface ReportData {
 interface SystemReportProps {
     preloadedData?: ReportData; // Changed to ReportData type
     onClose?: () => void;
+    startDate?: string;
+    endDate?: string;
 }
 
-export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClose }) => {
+export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClose, startDate, endDate }) => {
     const { profile } = useAuth();
     const [data, setData] = useState<ReportData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -51,12 +53,29 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
             }
 
             try {
-                // Data range: let's get everything for a global report, or maybe last 30 days. Let's do all time for now.
+                let damagesQuery = supabase.from('damages').select('*, vehicles(brand, model, plate, color)');
+                let fuelQuery = supabase.from('fuel_logs').select('*, vehicles(brand, model, plate, color)').order('created_at', { ascending: false });
+                let checklistQuery = supabase.from('checklists').select('*, checklist_items(*), vehicles(brand, model, plate, color)').order('created_at', { ascending: false });
+
+                if (startDate) {
+                    const start = new Date(startDate + 'T00:00:00');
+                    damagesQuery = damagesQuery.gte('created_at', start.toISOString());
+                    fuelQuery = fuelQuery.gte('created_at', start.toISOString());
+                    checklistQuery = checklistQuery.gte('created_at', start.toISOString());
+                }
+                if (endDate) {
+                    const end = new Date(endDate + 'T23:59:59.999');
+                    damagesQuery = damagesQuery.lte('created_at', end.toISOString());
+                    fuelQuery = fuelQuery.lte('created_at', end.toISOString());
+                    checklistQuery = checklistQuery.lte('created_at', end.toISOString());
+                }
+
+                // Data range: let's get everything for a global report, or filtering by dates.
                 const [vehRes, damRes, fuelRes, checkRes, profRes] = await Promise.all([
                     supabase.from('vehicles').select('*'),
-                    supabase.from('damages').select('*, vehicles(brand, model, plate, color)'),
-                    supabase.from('fuel_logs').select('*, vehicles(brand, model, plate, color)').order('created_at', { ascending: false }),
-                    supabase.from('checklists').select('*, checklist_items(*), vehicles(brand, model, plate, color)').order('created_at', { ascending: false }),
+                    damagesQuery,
+                    fuelQuery,
+                    checklistQuery,
                     supabase.from('profiles').select('id, full_name')
                 ]);
 
@@ -142,8 +161,17 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                 if (profile?.role === 'supervisor' && !preloadedData && !hasSavedRef.current) {
                     hasSavedRef.current = true;
                     try {
-                        const monthName = new Date().toLocaleString('pt-BR', { month: 'long' });
-                        const title = `Relatório Geral - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${new Date().getFullYear()}`;
+                        let title = `Relatório Geral`;
+                        if (startDate && endDate) {
+                            title += ` - ${new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR')} até ${new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR')}`;
+                        } else if (startDate) {
+                            title += ` - A partir de ${new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR')}`;
+                        } else if (endDate) {
+                            title += ` - Até ${new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR')}`;
+                        } else {
+                            const monthName = new Date().toLocaleString('pt-BR', { month: 'long' });
+                            title += ` - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${new Date().getFullYear()}`;
+                        }
 
                         // We check if we already saved one today to avoid spam, but for now let's just save it.
                         await supabase.from('system_reports').insert([{
@@ -218,7 +246,11 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                     <Car size={32} className="text-primary-600 print:hidden text-slate-800" />
                                     Relatório de Gestão <span className="text-primary-600">FleetCheck</span>
                                 </h1>
-                                <p className="text-slate-500 font-medium mt-1">Visão global da frota, consumos e avarias.</p>
+                                <p className="text-slate-500 font-medium mt-1">
+                                    {startDate || endDate
+                                        ? `Período: ${startDate ? new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início'} até ${endDate ? new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Hoje'}`
+                                        : 'Visão global da frota, consumos e avarias.'}
+                                </p>
                             </div>
                             <div className="text-right">
                                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Data de Emissão</p>

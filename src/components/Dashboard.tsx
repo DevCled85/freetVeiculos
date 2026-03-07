@@ -65,6 +65,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   // Report
   const [showReport, setShowReport] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [reportStartDate, setReportStartDate] = useState('');
+  const [reportEndDate, setReportEndDate] = useState('');
 
   // User management
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -665,6 +668,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   // ── Supervisor View ────────────────────────────────────────────────────────────
 
   if (profile?.role === 'supervisor') {
+    if (showReport) {
+      return <SystemReport onClose={() => setShowReport(false)} startDate={reportStartDate} endDate={reportEndDate} />;
+    }
+
     const pendingChecklists = checklists.filter(cl => cl.status !== 'resolved');
     const resolvedChecklists = checklists.filter(cl => cl.status === 'resolved');
 
@@ -739,7 +746,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Emita um relatório completo contendo o resumo da frota, consumos e ocorrências.</p>
               </div>
               <button
-                onClick={() => setShowReport(true)}
+                onClick={() => setShowDatePicker(true)}
                 className="mt-2 w-full py-3 bg-primary-600 hover:bg-primary-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary-900/50 flex flex-col items-center justify-center gap-1"
               >
                 <span>Gerar Relatório Geral</span>
@@ -1197,6 +1204,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           )}
         </div>
       </div>
+
+      {/* Date Filter Modal */}
+      <ModalWrapper show={showDatePicker} onClose={() => setShowDatePicker(false)}>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-3 bg-primary-500/10 text-primary-500 border border-primary-500/20 rounded-2xl"><FileText size={24} /></div>
+          <div><h2 className="text-xl font-bold text-white">Gerar Relatório</h2><p className="text-sm text-slate-400">Filtre por período (opcional)</p></div>
+        </div>
+        <div className="space-y-4 mb-6">
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Data Início</label>
+            <input type="date" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} className="w-full pl-4 pr-4 py-3 bg-slate-900 border border-slate-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Data Fim</label>
+            <input type="date" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)} className="w-full pl-4 pr-4 py-3 bg-slate-900 border border-slate-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all text-sm" />
+          </div>
+        </div>
+        <div className="flex gap-2 pt-2">
+          <button onClick={() => setShowDatePicker(false)} className="flex-1 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold hover:bg-slate-700 transition-colors">Cancelar</button>
+          <button onClick={() => { setShowDatePicker(false); setShowReport(true); }} className="flex-[2] py-3 rounded-xl bg-primary-600 text-white font-bold hover:bg-primary-500 transition-colors flex items-center justify-center shadow-md shadow-primary-500/20">
+            Confirmar e Gerar
+          </button>
+        </div>
+      </ModalWrapper>
+
     </div>
   );
 };
