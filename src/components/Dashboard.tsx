@@ -1063,6 +1063,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </div>
         </ModalWrapper>
 
+        {/* Date Filter Modal */}
+        <ModalWrapper show={showDatePicker} onClose={() => setShowDatePicker(false)}>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-primary-500/10 text-primary-500 border border-primary-500/20 rounded-2xl"><FileText size={24} /></div>
+            <div><h2 className="text-xl font-bold text-white">Gerar Relatório</h2><p className="text-sm text-slate-400">Filtre por período (opcional)</p></div>
+          </div>
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Data Início</label>
+              <input type="date" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} className="w-full pl-4 pr-4 py-3 bg-slate-900 border border-slate-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Data Fim</label>
+              <input type="date" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)} className="w-full pl-4 pr-4 py-3 bg-slate-900 border border-slate-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all text-sm" />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button onClick={() => setShowDatePicker(false)} className="flex-1 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold hover:bg-slate-700 transition-colors">Cancelar</button>
+            <button onClick={() => { setShowDatePicker(false); setShowReport(true); }} className="flex-[2] py-3 rounded-xl bg-primary-600 text-white font-bold hover:bg-primary-500 transition-colors flex items-center justify-center shadow-md shadow-primary-500/20">
+              Confirmar e Gerar
+            </button>
+          </div>
+        </ModalWrapper>
+
         {/* Report Overlay Component */}
         {showReport && <SystemReport onClose={() => setShowReport(false)} />}
       </div >
@@ -1204,30 +1228,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           )}
         </div>
       </div>
-
-      {/* Date Filter Modal */}
-      <ModalWrapper show={showDatePicker} onClose={() => setShowDatePicker(false)}>
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-primary-500/10 text-primary-500 border border-primary-500/20 rounded-2xl"><FileText size={24} /></div>
-          <div><h2 className="text-xl font-bold text-white">Gerar Relatório</h2><p className="text-sm text-slate-400">Filtre por período (opcional)</p></div>
-        </div>
-        <div className="space-y-4 mb-6">
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Data Início</label>
-            <input type="date" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} className="w-full pl-4 pr-4 py-3 bg-slate-900 border border-slate-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Data Fim</label>
-            <input type="date" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)} className="w-full pl-4 pr-4 py-3 bg-slate-900 border border-slate-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all text-sm" />
-          </div>
-        </div>
-        <div className="flex gap-2 pt-2">
-          <button onClick={() => setShowDatePicker(false)} className="flex-1 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold hover:bg-slate-700 transition-colors">Cancelar</button>
-          <button onClick={() => { setShowDatePicker(false); setShowReport(true); }} className="flex-[2] py-3 rounded-xl bg-primary-600 text-white font-bold hover:bg-primary-500 transition-colors flex items-center justify-center shadow-md shadow-primary-500/20">
-            Confirmar e Gerar
-          </button>
-        </div>
-      </ModalWrapper>
 
     </div>
   );
