@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, FuelLog, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, FuelLog, Vehicle, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
 import { useToast, ToastContainer } from './Toast';
 import {
@@ -14,7 +14,10 @@ import {
     MapPin,
     Calendar,
     Edit2,
-    Trash2
+    Trash2,
+    Plus,
+    CheckCircle2,
+    Upload
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -33,6 +36,18 @@ export const FuelListSupervisor: React.FC = () => {
     const { toasts, addToast, dismissToast } = useToast();
     const [uploadingLogId, setUploadingLogId] = useState<string | null>(null);
 
+    // Add Fuel States
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [isAdding, setIsAdding] = useState(false);
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [newLog, setNewLog] = useState({
+        vehicle_id: '',
+        mileage: 0,
+        liters: 0,
+        value: 0
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     // Edit/Delete States
     const [editingLog, setEditingLog] = useState<Partial<FuelLog> | null>(null);
     const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -41,6 +56,7 @@ export const FuelListSupervisor: React.FC = () => {
 
     useEffect(() => {
         fetchLogs(true);
+        fetchVehicles();
 
         if (isSupabaseConfigured) {
             const channel = supabase.channel('fuel-supervisor')
@@ -52,6 +68,12 @@ export const FuelListSupervisor: React.FC = () => {
             return () => { supabase.removeChannel(channel); };
         }
     }, []);
+
+    const fetchVehicles = async () => {
+        if (!isSupabaseConfigured) return;
+        const { data } = await supabase.from('vehicles').select('*');
+        if (data) setVehicles(data);
+    };
 
     const fetchLogs = async (showLoading = false) => {
         if (showLoading) setLoading(true);
@@ -162,9 +184,72 @@ export const FuelListSupervisor: React.FC = () => {
             fetchLogs(false);
         } catch (error: any) {
             console.error('Error updating log:', error);
-            addToast(error.message || 'Erro ao atualizar abastecimento.', 'error');
+            addToast('Erro ao atualizar abastecimento.', 'error');
         } finally {
             setIsSavingEdit(false);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!profile) return;
+
+        const selectedVehicle = vehicles.find(v => v.id === newLog.vehicle_id);
+        if (selectedVehicle) {
+            if (newLog.mileage < selectedVehicle.mileage) {
+                addToast(`A quilometragem informada (${newLog.mileage} km) não pode ser menor que a atual do veículo (${selectedVehicle.mileage} km).`, 'error');
+                return;
+            }
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            let finalPhotoUrl = null;
+
+            if (photoFile) {
+                const fileExt = photoFile.name.split('.').pop();
+                const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+                const filePath = `receipts/${fileName}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('fuel-receipts')
+                    .upload(filePath, photoFile);
+
+                if (uploadError) throw new Error('Falha ao upar comprovante: ' + uploadError.message);
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('fuel-receipts')
+                    .getPublicUrl(filePath);
+
+                finalPhotoUrl = publicUrl;
+            }
+
+            const { error } = await supabase
+                .from('fuel_logs')
+                .insert([{
+                    ...newLog,
+                    photo_url: finalPhotoUrl,
+                    driver_id: profile.id
+                }]);
+
+            if (error) throw error;
+
+            await supabase
+                .from('vehicles')
+                .update({ mileage: newLog.mileage })
+                .eq('id', newLog.vehicle_id);
+
+            setIsAdding(false);
+            fetchLogs(false);
+            setNewLog({ vehicle_id: '', mileage: 0, liters: 0, value: 0 });
+            setPhotoFile(null);
+            addToast('Abastecimento registrado com sucesso!', 'success');
+        } catch (error: any) {
+            console.error('Error logging fuel:', error);
+            addToast(error.message || 'Erro ao registrar abastecimento.', 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -177,15 +262,25 @@ export const FuelListSupervisor: React.FC = () => {
                     Todos os Abastecimentos
                 </h3>
 
-                <div className="relative w-full md:w-96">
-                    <input
-                        type="text"
-                        placeholder="Buscar por placa, motorista..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 text-white pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all shadow-inner"
-                    />
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-center">
+                    <div className="relative w-full sm:w-80">
+                        <input
+                            type="text"
+                            placeholder="Buscar por placa, motorista..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-700 text-white pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all shadow-inner"
+                        />
+                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    </div>
+
+                    <button
+                        onClick={() => setIsAdding(true)}
+                        className="w-full sm:w-auto bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary-900/50 transition-all whitespace-nowrap"
+                    >
+                        <Plus size={20} />
+                        Registrar
+                    </button>
                 </div>
             </div>
 
@@ -444,6 +539,142 @@ export const FuelListSupervisor: React.FC = () => {
                                         )}
                                     </button>
                                 </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Add Fuel Log Modal */}
+            <AnimatePresence>
+                {isAdding && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]"
+                            onClick={() => setIsAdding(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-[70] overflow-hidden"
+                        >
+                            <div className="p-8">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-xl font-bold text-white">Registrar Abastecimento</h3>
+                                    <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-200">
+                                        <X size={24} />
+                                    </button>
+                                </div>
+
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Veículo</label>
+                                        <select
+                                            required
+                                            value={newLog.vehicle_id}
+                                            onChange={(e) => setNewLog({ ...newLog, vehicle_id: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                                        >
+                                            <option value="">Selecione um veículo</option>
+                                            {vehicles.map(v => (
+                                                <option key={v.id} value={v.id}>
+                                                    {v.model} / {v.brand} ({v.plate}) {v.color ? `- ${v.color}` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Quilometragem</label>
+                                            <input
+                                                type="number"
+                                                required
+                                                value={newLog.mileage || ''}
+                                                onChange={(e) => setNewLog({ ...newLog, mileage: parseInt(e.target.value) || 0 })}
+                                                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Litros</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                required
+                                                value={newLog.liters || ''}
+                                                onChange={(e) => setNewLog({ ...newLog, liters: parseFloat(e.target.value) || 0 })}
+                                                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Valor Total (R$)</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                required
+                                                value={newLog.value || ''}
+                                                onChange={(e) => setNewLog({ ...newLog, value: parseFloat(e.target.value) || 0 })}
+                                                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Comprovante do Posto (Foto)</label>
+                                        <div className="border-2 border-dashed border-slate-700 hover:border-primary-500/50 rounded-xl p-4 text-center transition-colors">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                id="receipt-photo"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    if (e.target.files && e.target.files.length > 0) {
+                                                        setPhotoFile(e.target.files[0]);
+                                                    }
+                                                }}
+                                            />
+                                            <label htmlFor="receipt-photo" className="cursor-pointer flex flex-col items-center gap-2">
+                                                {photoFile ? (
+                                                    <>
+                                                        <div className="w-12 h-12 bg-primary-500/10 text-primary-400 rounded-full flex items-center justify-center">
+                                                            <CheckCircle2 size={24} />
+                                                        </div>
+                                                        <span className="text-sm text-slate-300 font-medium truncate max-w-[200px]">{photoFile.name}</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="w-12 h-12 bg-slate-800 text-slate-400 rounded-full flex items-center justify-center">
+                                                            <Upload size={24} />
+                                                        </div>
+                                                        <span className="text-sm text-slate-400 font-medium">Clique para anexar comprovante</span>
+                                                    </>
+                                                )}
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4">
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary-900/50 flex items-center justify-center gap-2"
+                                        >
+                                            {isSubmitting ? 'Salvando...' : (
+                                                <>
+                                                    <CheckCircle2 size={20} />
+                                                    Salvar Registro
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </motion.div>
                     </>
