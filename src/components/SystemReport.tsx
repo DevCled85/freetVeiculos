@@ -9,6 +9,7 @@ interface ReportData {
     damages: Damage[];
     fuelLogs: FuelLog[];
     checklists: any[];
+    profiles: any[];
     metrics: {
         totalFuelLiters: number;
         totalFuelCost: number;
@@ -40,21 +41,24 @@ export const SystemReport: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
         try {
             // Data range: let's get everything for a global report, or maybe last 30 days. Let's do all time for now.
-            const [vehRes, damRes, fuelRes, checkRes] = await Promise.all([
+            const [vehRes, damRes, fuelRes, checkRes, profRes] = await Promise.all([
                 supabase.from('vehicles').select('*'),
-                supabase.from('damages').select('*, vehicles(brand, model, plate)'),
-                supabase.from('fuel_logs').select('*, vehicles(brand, model, plate)').order('created_at', { ascending: true }),
-                supabase.from('checklists').select('id, status, created_at, vehicle_id')
+                supabase.from('damages').select('*, vehicles(brand, model, plate, color)'),
+                supabase.from('fuel_logs').select('*, vehicles(brand, model, plate, color)').order('created_at', { ascending: false }),
+                supabase.from('checklists').select('*, checklist_items(*), vehicles(brand, model, plate, color)').order('created_at', { ascending: false }),
+                supabase.from('profiles').select('id, full_name')
             ]);
 
             if (vehRes.error) throw vehRes.error;
             if (damRes.error) throw damRes.error;
             if (fuelRes.error) throw fuelRes.error;
+            if (checkRes.error) throw checkRes.error;
 
             const vehicles = vehRes.data as Vehicle[];
             const damages = damRes.data as Damage[];
             const fuelLogs = fuelRes.data as any[];
             const checklists = checkRes.data || [];
+            const profiles = profRes.data || [];
 
             // Calculate Metrics
             let totalFuelLiters = 0;
@@ -107,6 +111,7 @@ export const SystemReport: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                 damages,
                 fuelLogs,
                 checklists,
+                profiles,
                 metrics: {
                     totalFuelLiters,
                     totalFuelCost,
@@ -224,14 +229,38 @@ export const SystemReport: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                                         {data.vehicles.map(v => {
                                             const m = data.vehicleMetrics[v.id];
                                             if (!m || m.liters === 0) return null; // Hide vehicles with no logs
+                                            const vLogs = data.fuelLogs.filter((log: any) => log.vehicle_id === v.id);
                                             return (
-                                                <tr key={v.id} className="hover:bg-slate-50">
-                                                    <td className="px-4 py-3 font-bold text-slate-800 capitalize">{v.model.toLowerCase()} - {v.plate}</td>
-                                                    <td className="px-4 py-3 text-right text-slate-600 font-medium">{m.kmTraveled > 0 ? m.kmTraveled.toLocaleString() : '-'}</td>
-                                                    <td className="px-4 py-3 text-right text-slate-600 font-medium">{m.liters.toFixed(1)}</td>
-                                                    <td className="px-4 py-3 text-center font-bold text-primary-600">{m.avg > 0 ? m.avg.toFixed(1) : '-'}</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-slate-800">{m.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                                                </tr>
+                                                <React.Fragment key={v.id}>
+                                                    <tr className="hover:bg-slate-50 bg-slate-50/50">
+                                                        <td className="px-4 py-3 font-bold text-slate-800 capitalize">
+                                                            {v.model.toLowerCase()} - {v.plate}
+                                                            {v.color && <span className="text-slate-500 font-normal ml-1">({v.color})</span>}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right text-slate-600 font-medium">{m.kmTraveled > 0 ? m.kmTraveled.toLocaleString() : '-'}</td>
+                                                        <td className="px-4 py-3 text-right text-slate-600 font-medium">{m.liters.toFixed(1)}</td>
+                                                        <td className="px-4 py-3 text-center font-bold text-primary-600">{m.avg > 0 ? m.avg.toFixed(1) : '-'}</td>
+                                                        <td className="px-4 py-3 text-right font-bold text-slate-800">{m.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                                    </tr>
+                                                    {vLogs.length > 0 && (
+                                                        <tr>
+                                                            <td colSpan={5} className="px-4 py-2 bg-white border-b border-slate-100">
+                                                                <div className="pl-4 border-l-2 border-slate-200">
+                                                                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest">Histórico de Abastecimentos</p>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {vLogs.map((log: any) => (
+                                                                            <span key={log.id} className="inline-block bg-slate-100 px-2 py-1 rounded text-xs text-slate-600 font-medium border border-slate-200">
+                                                                                {new Date(log.created_at).toLocaleDateString('pt-BR')} às {new Date(log.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                                <span className="text-slate-400 mx-1">•</span>
+                                                                                {log.liters}L
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
                                             );
                                         })}
                                     </tbody>
@@ -251,6 +280,7 @@ export const SystemReport: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                                         <div key={v.id} className={`p-3 rounded-lg border-l-4 border bg-slate-50 ${v.status === 'active' ? 'border-l-emerald-500 border-slate-200' : 'border-l-amber-500 border-slate-200'}`}>
                                             <p className="font-bold text-slate-800 capitalize text-sm">{v.model.toLowerCase()} <span className="font-normal text-slate-500">/ {v.brand.toLowerCase()}</span></p>
                                             <p className="text-xs font-mono text-slate-500 mt-1 bg-slate-200 px-1.5 py-0.5 rounded inline-block">{v.plate}</p>
+                                            {v.color && <span className="ml-2 text-xs text-slate-500 capitalize">{v.color}</span>}
                                             <p className="text-[10px] font-bold uppercase mt-2 tracking-wider">
                                                 {v.status === 'active'
                                                     ? <span className="text-emerald-600">Disponível / Ativo</span>
@@ -275,6 +305,7 @@ export const SystemReport: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                                             <tr>
                                                 <th className="px-4 py-3">Data</th>
                                                 <th className="px-4 py-3">Veículo</th>
+                                                <th className="px-4 py-3 w-1/3">Descrição</th>
                                                 <th className="px-4 py-3">Prioridade</th>
                                                 <th className="px-4 py-3">Status</th>
                                             </tr>
@@ -282,8 +313,14 @@ export const SystemReport: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                                         <tbody className="divide-y divide-slate-100">
                                             {data.damages.slice(0, 20).map(d => (
                                                 <tr key={d.id} className="hover:bg-slate-50">
-                                                    <td className="px-4 py-3 text-slate-600 font-medium">{new Date(d.created_at).toLocaleDateString()}</td>
-                                                    <td className="px-4 py-3 font-bold text-slate-800">{(d as any).vehicles?.plate || '-'}</td>
+                                                    <td className="px-4 py-3 text-slate-600 font-medium truncate max-w-[120px]">
+                                                        {new Date(d.created_at).toLocaleDateString('pt-BR')} <span className="text-xs text-slate-400 block">{new Date(d.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 font-bold text-slate-800">
+                                                        {(d as any).vehicles?.plate || '-'}
+                                                        {(d as any).vehicles?.color && <span className="text-xs text-slate-500 font-normal block">{(d as any).vehicles.color}</span>}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-700 text-sm whitespace-normal">{d.description}</td>
                                                     <td className="px-4 py-3">
                                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${d.priority === 'high' ? 'bg-red-100 text-red-700' : d.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
                                                             {d.priority === 'high' ? 'Alta' : d.priority === 'medium' ? 'Média' : 'Baixa'}
@@ -292,7 +329,7 @@ export const SystemReport: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                                                     <td className="px-4 py-3">
                                                         {d.status === 'pending'
                                                             ? <span className="text-red-500 font-bold text-xs uppercase">Pendente</span>
-                                                            : <span className="text-emerald-500 font-bold text-xs uppercase">Resolvido</span>}
+                                                            : <span className="text-emerald-500 font-bold text-xs uppercase">Resolvido ✅</span>}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -300,6 +337,71 @@ export const SystemReport: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                                     </table>
                                     {data.damages.length > 20 && (
                                         <div className="p-2 border-t border-slate-100 bg-slate-50 text-center text-xs text-slate-500 font-medium">Exibindo as 20 ocorrências mais recentes. Total: {data.damages.length}</div>
+                                    )}
+                                </div>
+                            )}
+                        </section>
+
+                        {/* 5. Checklists */}
+                        <section className="page-break-inside-avoid mt-10">
+                            <h2 className="text-xl font-bold text-slate-800 mb-4 border-l-4 border-primary-500 pl-3">Checklists</h2>
+                            {data.checklists.length === 0 ? (
+                                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm text-slate-500">Nenhum checklist registrado.</div>
+                            ) : (
+                                <div className="overflow-hidden rounded-xl border border-slate-200">
+                                    <table className="w-full text-left text-sm whitespace-nowrap">
+                                        <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-widest">
+                                            <tr>
+                                                <th className="px-4 py-3">Data e Hora</th>
+                                                <th className="px-4 py-3">Veículo</th>
+                                                <th className="px-4 py-3">Motorista</th>
+                                                <th className="px-4 py-3">Status & Pendências</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {data.checklists.slice(0, 20).map((c: any) => {
+                                                const driver = data.profiles.find(p => p.id === c.driver_id)?.full_name || 'Desconhecido';
+                                                const badItems = (c.checklist_items || []).filter((i: any) => !i.is_ok);
+
+                                                return (
+                                                    <tr key={c.id} className="hover:bg-slate-50">
+                                                        <td className="px-4 py-3 text-slate-600 font-medium align-top">
+                                                            {new Date(c.created_at).toLocaleDateString('pt-BR')} <br />
+                                                            <span className="text-xs text-slate-400">{new Date(c.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        </td>
+                                                        <td className="px-4 py-3 font-bold text-slate-800 align-top">
+                                                            {c.vehicles?.plate || '-'}
+                                                            {c.vehicles?.color && <span className="text-xs text-slate-500 font-normal block">{c.vehicles.color}</span>}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-slate-700 align-top">{driver}</td>
+                                                        <td className="px-4 py-3 align-top whitespace-normal">
+                                                            {c.status === 'resolved' ? (
+                                                                <div>
+                                                                    <span className="text-emerald-500 font-bold text-sm flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Concluído / OK</span>
+                                                                    <p className="text-xs text-slate-500 mt-1">Todos os itens conferidos e resolvidos.</p>
+                                                                </div>
+                                                            ) : (
+                                                                <div>
+                                                                    <span className="text-red-500 font-bold text-sm flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Com Pendências</span>
+                                                                    {badItems.length > 0 && (
+                                                                        <ul className="mt-2 space-y-1">
+                                                                            {badItems.map((bi: any) => (
+                                                                                <li key={bi.id} className="text-[11px] text-slate-600 bg-red-50 p-1.5 rounded border border-red-100">
+                                                                                    <span className="font-bold">{bi.item_name}:</span> {bi.notes || 'Sem observação'}
+                                                                                </li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                    {data.checklists.length > 20 && (
+                                        <div className="p-2 border-t border-slate-100 bg-slate-50 text-center text-xs text-slate-500 font-medium">Exibindo os 20 checklists mais recentes. Total: {data.checklists.length}</div>
                                     )}
                                 </div>
                             )}
