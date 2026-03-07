@@ -409,7 +409,7 @@ export const Layout: React.FC<{
       {/* Main Content */}
       <main className="flex-1 overflow-auto p-4 md:p-8 relative z-0 print:p-0 print:overflow-visible">
         <div className="max-w-6xl mx-auto print:max-w-none print:w-full">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-8 print:hidden">
             <h2 className="text-3xl font-extrabold text-white tracking-tight capitalize drop-shadow-sm">
               {navItems.find(i => i.id === activeTab)?.label}
             </h2>

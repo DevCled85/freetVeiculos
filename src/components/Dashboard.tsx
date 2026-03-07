@@ -5,12 +5,15 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import {
   Car, AlertTriangle, CheckCircle2, Clock, TrendingUp, ClipboardCheck,
   UserPlus, X, User, Lock, ShieldCheck, Pencil, Trash2, Users, Bell,
-  FileText, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Calendar as CalendarIcon
+  FileText, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Calendar as CalendarIcon, Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ToastContainer, useToast } from './Toast';
 import { SystemReport } from './SystemReport';
 import { DateRangePicker } from './DateRangePicker';
+import { generateReportData } from '../lib/reports';
+
+const TEST_MONTHLY_REPORT = false; // Set to true to force bypass the date check for testing
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -69,6 +72,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [reportStartDate, setReportStartDate] = useState('');
   const [reportEndDate, setReportEndDate] = useState('');
+  const [latestMonthly, setLatestMonthly] = useState<any>(null);
 
   // User management
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -160,6 +164,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     if (data) setResolvedDamages(data as any);
   }, []);
 
+  const fetchLatestMonthly = useCallback(async () => {
+    if (!isSupabaseConfigured || profile?.role !== 'supervisor') return;
+    const { data } = await supabase.from('monthly_reports').select('*').order('created_at', { ascending: false }).limit(1).single();
+    if (data) setLatestMonthly(data);
+  }, [profile?.role]);
+
   useEffect(() => {
     fetchStats();
 
@@ -167,6 +177,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       fetchUsers();
       fetchChecklists();
       fetchResolvedDamages();
+      fetchLatestMonthly();
     } else if (profile?.id) {
       fetchChecklists(profile.id);
       fetchMyDamages(profile.id);
@@ -209,10 +220,66 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             }
           }
         })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'system_reports' }, (payload) => {
+          if (profile.role === 'supervisor') {
+            if (payload.eventType === 'INSERT') {
+              addToast('📄 Um novo Relatório Personalizado foi salvo no Histórico.', 'info', 5000);
+            } else if (payload.eventType === 'DELETE') {
+              addToast('🗑️ Um Relatório Personalizado foi removido do Histórico.', 'error', 5000);
+            }
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'monthly_reports' }, (payload) => {
+          if (profile.role === 'supervisor') {
+            if (payload.eventType === 'INSERT') {
+              addToast('📆 Relatório Mensal Automático gerado pelo Sistema com sucesso!', 'success', 6000);
+              fetchLatestMonthly();
+            } else if (payload.eventType === 'DELETE') {
+              addToast('🗑️ Um Relatório Mensal antigo foi removido.', 'error', 5000);
+              fetchLatestMonthly();
+            }
+          }
+        })
         .subscribe();
       return () => { supabase.removeChannel(channel); };
     }
-  }, [profile?.id, profile?.role, fetchStats, fetchUsers, fetchChecklists, fetchMyDamages, fetchResolvedDamages]);
+  }, [profile?.id, profile?.role, fetchStats, fetchUsers, fetchChecklists, fetchMyDamages, fetchResolvedDamages, fetchLatestMonthly]);
+
+  // ── Monthly Report Stealth Generator ──────────────────────────────────────────
+
+  useEffect(() => {
+    if (profile?.role !== 'supervisor') return;
+
+    const checkMonthlyReport = async () => {
+      try {
+        const now = new Date();
+        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        const isLastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() === now.getDate();
+        const isTime = now.getHours() >= 22;
+
+        if (!TEST_MONTHLY_REPORT && (!isLastDay || !isTime)) return;
+
+        const { data, error } = await supabase.from('monthly_reports').select('id').eq('month_key', monthKey).single();
+
+        if (!data && (!error || error.code === 'PGRST116')) {
+          // Not generated yet, let's silently generate
+          const reportData = await generateReportData();
+
+          await supabase.from('monthly_reports').insert([{
+            month_key: monthKey,
+            data: reportData
+          }]);
+          addToast('Relatório Mensal gerado pelo sistema!', 'success', 8000);
+          fetchLatestMonthly();
+        }
+      } catch (err) {
+        console.warn('Failed automated monthly report check', err);
+      }
+    };
+
+    checkMonthlyReport();
+  }, [profile?.role, fetchLatestMonthly, addToast]);
 
   // ── Create User ───────────────────────────────────────────────────────────────
 
@@ -746,6 +813,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <p className="text-sm font-bold text-slate-300">Relatório Geral do Sistema</p>
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Emita um relatório completo contendo o resumo da frota, consumos e ocorrências.</p>
               </div>
+
+              {latestMonthly && (
+                <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl p-3 mb-4 shadow-lg shadow-emerald-500/5 flex items-center justify-between gap-3 overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                  <div className="flex items-center gap-3 relative z-10">
+                    <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg shrink-0 border border-emerald-500/30">
+                      <FileText size={18} />
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-emerald-400 font-bold text-[13px] flex items-center gap-1.5 mb-0.5">
+                        Relatório Mensal
+                        <span className="bg-emerald-500 text-white text-[9px] uppercase font-black px-1.5 py-0.5 rounded animate-pulse">NOVO</span>
+                      </h4>
+                      <p className="text-slate-400 text-[11px] font-medium leading-none">Auto-gerado de {latestMonthly.month_key}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const event = new CustomEvent('openMonthlyReport', { detail: { preloadedData: latestMonthly.data, createdAt: latestMonthly.created_at } });
+                      window.dispatchEvent(event);
+                      if (onNavigate) onNavigate('reports');
+                    }}
+                    className="relative z-10 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:border-emerald-500/50 rounded-lg text-[11px] tracking-wide font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-sm"
+                  >
+                    <Eye size={14} /> Abrir
+                  </button>
+                </div>
+              )}
+
               <button
                 onClick={() => setShowDatePicker(true)}
                 className="mt-2 w-full py-3 bg-primary-600 hover:bg-primary-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary-900/50 flex flex-col items-center justify-center gap-1"

@@ -46,12 +46,39 @@ const colorMap = {
     },
 };
 
+// Sounds a notification chime via Web Audio API
+const playNotificationSound = (type: ToastType) => {
+    try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        // Different tones per type
+        const freq = type === 'error' ? 320 : type === 'success' ? 880 : 660;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, ctx.currentTime + 0.08);
+        osc.type = 'sine';
+
+        gain.gain.setValueAtTime(0.35, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.35);
+    } catch (_) {
+        // Silently ignore if the browser blocks audio
+    }
+};
+
 const Toast: React.FC<ToastProps> = ({ toast, onDismiss }) => {
     const duration = toast.duration ?? 3000;
     const Icon = iconMap[toast.type];
     const colors = colorMap[toast.type];
 
     useEffect(() => {
+        playNotificationSound(toast.type);
         const timer = setTimeout(() => onDismiss(toast.id), duration);
         return () => clearTimeout(timer);
     }, [toast.id, duration, onDismiss]);

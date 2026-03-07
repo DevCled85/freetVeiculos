@@ -1,28 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, Vehicle, Damage, FuelLog, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { generateReportData, ReportData } from '../lib/reports';
 import { useToast } from './Toast';
 import { useAuth } from '../lib/AuthContext';
 import { X, Printer, FileText, Download, Loader2, Car } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-
-interface ReportData {
-    vehicles: Vehicle[];
-    damages: Damage[];
-    fuelLogs: FuelLog[];
-    checklists: any[];
-    profiles: any[];
-    metrics: {
-        totalFuelLiters: number;
-        totalFuelCost: number;
-        globalAvgConsumption: number;
-        totalVehicles: number;
-        activeVehicles: number;
-        maintenanceVehicles: number;
-        pendingDamages: number;
-        resolvedDamages: number;
-    };
-    vehicleMetrics: Record<string, { kmTraveled: number; liters: number; cost: number; avg: number; minKm: number; maxKm: number }>; // Added minKm, maxKm to match calculation
-}
 
 interface SystemReportProps {
     preloadedData?: ReportData; // Changed to ReportData type
@@ -54,107 +36,8 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
             }
 
             try {
-                let damagesQuery = supabase.from('damages').select('*, vehicles(brand, model, plate, color)');
-                let fuelQuery = supabase.from('fuel_logs').select('*, vehicles(brand, model, plate, color)').order('created_at', { ascending: false });
-                let checklistQuery = supabase.from('checklists').select('*, checklist_items(*), vehicles(brand, model, plate, color)').order('created_at', { ascending: false });
+                const finalData = await generateReportData(startDate, endDate);
 
-                if (startDate) {
-                    const start = new Date(startDate + 'T00:00:00');
-                    damagesQuery = damagesQuery.gte('created_at', start.toISOString());
-                    fuelQuery = fuelQuery.gte('created_at', start.toISOString());
-                    checklistQuery = checklistQuery.gte('created_at', start.toISOString());
-                }
-                if (endDate) {
-                    const end = new Date(endDate + 'T23:59:59.999');
-                    damagesQuery = damagesQuery.lte('created_at', end.toISOString());
-                    fuelQuery = fuelQuery.lte('created_at', end.toISOString());
-                    checklistQuery = checklistQuery.lte('created_at', end.toISOString());
-                }
-
-                // Data range: let's get everything for a global report, or filtering by dates.
-                const [vehRes, damRes, fuelRes, checkRes, profRes] = await Promise.all([
-                    supabase.from('vehicles').select('*'),
-                    damagesQuery,
-                    fuelQuery,
-                    checklistQuery,
-                    supabase.from('profiles').select('id, full_name')
-                ]);
-
-                if (vehRes.error) throw vehRes.error;
-                if (damRes.error) throw damRes.error;
-                if (fuelRes.error) throw fuelRes.error;
-                if (checkRes.error) throw checkRes.error;
-
-                const vehicles = vehRes.data as Vehicle[];
-                const damages = damRes.data as Damage[];
-                const fuelLogs = fuelRes.data as any[];
-                const checklists = checkRes.data || [];
-                const profiles = profRes.data || [];
-
-                // Calculate Metrics
-                let totalFuelLiters = 0;
-                let totalFuelCost = 0;
-                let pendingDamages = 0;
-                let resolvedDamages = 0;
-
-                const vMetrics: Record<string, { kmTraveled: number; liters: number; cost: number; avg: number; minKm: number; maxKm: number }> = {};
-
-                vehicles.forEach(v => {
-                    vMetrics[v.id] = { kmTraveled: 0, liters: 0, cost: 0, avg: 0, minKm: Infinity, maxKm: 0 };
-                });
-
-                fuelLogs.forEach(log => {
-                    totalFuelLiters += log.liters;
-                    totalFuelCost += log.value;
-                    const vid = log.vehicle_id;
-                    if (vMetrics[vid]) {
-                        vMetrics[vid].liters += log.liters;
-                        vMetrics[vid].cost += log.value;
-                        if (log.mileage < vMetrics[vid].minKm) vMetrics[vid].minKm = log.mileage;
-                        if (log.mileage > vMetrics[vid].maxKm) vMetrics[vid].maxKm = log.mileage;
-                    }
-                });
-
-                let totalKmTraveled = 0;
-                Object.keys(vMetrics).forEach(vid => {
-                    const met = vMetrics[vid];
-                    if (met.maxKm > met.minKm && met.minKm !== Infinity) {
-                        met.kmTraveled = met.maxKm - met.minKm;
-                        totalKmTraveled += met.kmTraveled;
-                    }
-                    if (met.liters > 0 && met.kmTraveled > 0) {
-                        met.avg = met.kmTraveled / met.liters;
-                    }
-                });
-
-                let globalAvgConsumption = 0; // Renamed from avgKmL
-                if (totalFuelLiters > 0 && totalKmTraveled > 0) {
-                    globalAvgConsumption = totalKmTraveled / totalFuelLiters;
-                }
-
-                damages.forEach(d => {
-                    if (d.status === 'resolved') resolvedDamages++;
-                    else pendingDamages++;
-                });
-
-                const finalData: ReportData = {
-                    vehicles,
-                    damages,
-                    fuelLogs,
-                    checklists,
-                    profiles,
-                    metrics: {
-                        totalFuelLiters,
-                        totalFuelCost,
-                        globalAvgConsumption, // Updated here
-                        totalVehicles: vehicles.length,
-                        activeVehicles: vehicles.filter(v => v.status === 'active').length,
-                        maintenanceVehicles: vehicles.filter(v => ['maintenance', 'inactive'].includes(v.status)).length,
-                        pendingDamages,
-                        resolvedDamages
-                    },
-                    vehicleMetrics: vMetrics
-                };
 
                 setData(finalData);
 
@@ -249,7 +132,7 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                 </h1>
                                 <p className="text-slate-500 font-medium mt-1">
                                     {startDate || endDate
-                                        ? `Período: ${startDate ? new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início'} até ${endDate ? new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Hoje'}`
+                                        ? `Período: ${startDate ? new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início'} até ${endDate ? new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Hoje'} `
                                         : 'Visão global da frota, consumos e avarias.'}
                                 </p>
                             </div>
@@ -358,7 +241,7 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                 {data.vehicles.map(v => {
                                     return (
-                                        <div key={v.id} className={`p-3 rounded-lg border-l-4 border bg-slate-50 ${v.status === 'active' ? 'border-l-emerald-500 border-slate-200' : 'border-l-amber-500 border-slate-200'}`}>
+                                        <div key={v.id} className={`p - 3 rounded - lg border - l - 4 border bg - slate - 50 ${v.status === 'active' ? 'border-l-emerald-500 border-slate-200' : 'border-l-amber-500 border-slate-200'} `}>
                                             <p className="font-bold text-slate-800 capitalize text-sm">{v.model.toLowerCase()} <span className="font-normal text-slate-500">/ {v.brand.toLowerCase()}</span></p>
                                             <p className="text-xs font-mono text-slate-500 mt-1 bg-slate-200 px-1.5 py-0.5 rounded inline-block">{v.plate}</p>
                                             {v.color && <span className="ml-2 text-xs text-slate-500 capitalize">{v.color}</span>}
@@ -392,7 +275,11 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {data.damages.slice(0, 20).map(d => (
+                                            {[...data.damages].sort((a: any, b: any) => {
+                                                if (a.status === 'pending' && b.status !== 'pending') return -1;
+                                                if (a.status !== 'pending' && b.status === 'pending') return 1;
+                                                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                                            }).slice(0, 20).map(d => (
                                                 <tr key={d.id} className="hover:bg-slate-50">
                                                     <td className="px-4 py-3 text-slate-600 font-medium truncate max-w-[120px]">
                                                         {new Date(d.created_at).toLocaleDateString('pt-BR')} <span className="text-xs text-slate-400 block">{new Date(d.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -403,7 +290,7 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                                     </td>
                                                     <td className="px-4 py-3 text-slate-700 text-sm whitespace-normal">{d.description}</td>
                                                     <td className="px-4 py-3">
-                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${d.priority === 'high' ? 'bg-red-100 text-red-700' : d.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                        <span className={`px - 2 py - 0.5 rounded - full text - [10px] font - bold uppercase tracking - widest ${d.priority === 'high' ? 'bg-red-100 text-red-700' : d.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'} `}>
                                                             {d.priority === 'high' ? 'Alta' : d.priority === 'medium' ? 'Média' : 'Baixa'}
                                                         </span>
                                                     </td>
@@ -440,7 +327,11 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {data.checklists.slice(0, 20).map((c: any) => {
+                                            {[...data.checklists].sort((a: any, b: any) => {
+                                                if (a.status !== 'resolved' && b.status === 'resolved') return -1;
+                                                if (a.status === 'resolved' && b.status !== 'resolved') return 1;
+                                                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                                            }).slice(0, 20).map((c: any) => {
                                                 const driver = data.profiles.find(p => p.id === c.driver_id)?.full_name || 'Desconhecido';
                                                 const badItems = (c.checklist_items || []).filter((i: any) => !i.is_ok);
 
@@ -494,12 +385,12 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
 
             {/* Tailwind Print Overrides to Ensure clean print */}
             <style>{`
-        @media print {
-          @page { margin: 10mm; }
-          body { background: white !important; }
-          .page-break-inside-avoid { break-inside: avoid; }
-        }
-      `}</style>
+@media print {
+    @page { margin: 10mm; }
+          body { background: white!important; }
+          .page -break-inside - avoid { break-inside: avoid; }
+}
+`}</style>
         </div>
     );
 };
