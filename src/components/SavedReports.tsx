@@ -82,7 +82,7 @@ export const SavedReports: React.FC = () => {
                     {/* The Report itself */}
                     <div className="bg-white text-slate-900 pointer-events-none pb-20">
                         {/* We use pointer-events-none so it's strictly a read-only snapshot, except we might want to let them scroll. So maybe just wrap in a read-only context inside SystemReport if needed. But this is fine for now. */}
-                        <SystemReport preloadedData={selectedReport.data} />
+                        <SystemReport preloadedData={selectedReport.data} createdAt={selectedReport.created_at} />
                     </div>
                 </div>
             </div>

@@ -29,9 +29,10 @@ interface SystemReportProps {
     onClose?: () => void;
     startDate?: string;
     endDate?: string;
+    createdAt?: string; // If preloaded, the historic date of generation
 }
 
-export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClose, startDate, endDate }) => {
+export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClose, startDate, endDate, createdAt }) => {
     const { profile } = useAuth();
     const [data, setData] = useState<ReportData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -254,7 +255,8 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                             </div>
                             <div className="text-right">
                                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Data de Emissão</p>
-                                <p className="text-lg font-bold text-slate-700">{new Date().toLocaleDateString('pt-BR')}</p>
+                                <p className="text-lg font-bold text-slate-700">{createdAt ? new Date(createdAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}</p>
+                                <p className="text-xs font-mono text-slate-500 mb-1">{createdAt ? new Date(createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
                                 <p className="text-sm text-slate-500 mt-1">
                                     Gerado por: <span className="font-bold text-slate-700">
                                         {preloadedData ? 'Registro Histórico' : profile?.full_name}

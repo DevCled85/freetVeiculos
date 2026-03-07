@@ -206,12 +206,12 @@ export const Layout: React.FC<{
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-900 to-black flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-900 to-black flex flex-col md:flex-row print:bg-white print:block">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex w-64 bg-slate-900/60 backdrop-blur-xl border-r border-slate-800/60 flex-col shadow-2xl">
+      <aside className="hidden md:flex w-64 bg-slate-900/60 backdrop-blur-xl border-r border-slate-800/60 flex-col shadow-2xl print:hidden">
         <div className="p-6 border-b border-slate-800/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-slate-800 rounded-xl shadow-sm border border-slate-700 p-0.5 overflow-hidden flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 bg-slate-800 rounded-xl shadow-sm border border-slate-700 p-0.5 overflow-hidden flex items-center justify-center shrink-0 print:hidden">
               <img src={logoVidronox} alt="Vidronox Logo" className="w-full h-full object-contain mix-blend-screen" />
             </div>
             <span className="font-extrabold text-xl text-white tracking-tight">FleetCheck</span>
@@ -268,7 +268,7 @@ export const Layout: React.FC<{
       </aside>
 
       {/* Mobile Header */}
-      <header className="md:hidden bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
+      <header className="md:hidden bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-50 shadow-sm print:hidden">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-slate-800 rounded-lg shadow-sm border border-slate-700 p-0.5 overflow-hidden flex items-center justify-center shrink-0">
             <img src={logoVidronox} alt="Vidronox Logo" className="w-full h-full object-contain mix-blend-screen" />
@@ -407,8 +407,8 @@ export const Layout: React.FC<{
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto p-4 md:p-8 relative z-0">
-        <div className="max-w-6xl mx-auto">
+      <main className="flex-1 overflow-auto p-4 md:p-8 relative z-0 print:p-0 print:overflow-visible">
+        <div className="max-w-6xl mx-auto print:max-w-none print:w-full">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-3xl font-extrabold text-white tracking-tight capitalize drop-shadow-sm">
               {navItems.find(i => i.id === activeTab)?.label}
