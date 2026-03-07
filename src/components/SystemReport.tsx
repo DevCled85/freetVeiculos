@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, Vehicle, Damage, FuelLog, isSupabaseConfigured } from '../lib/supabase';
 import { useToast } from './Toast';
-import { X, Printer, FileText, Download, Loader2 } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
+import { X, Printer, FileText, Download, Loader2, Car } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface ReportData {
@@ -13,125 +14,156 @@ interface ReportData {
     metrics: {
         totalFuelLiters: number;
         totalFuelCost: number;
-        avgKmL: number;
+        globalAvgConsumption: number;
         totalVehicles: number;
         activeVehicles: number;
         maintenanceVehicles: number;
         pendingDamages: number;
         resolvedDamages: number;
     };
-    vehicleMetrics: Record<string, { kmTraveled: number; liters: number; cost: number; avg: number }>;
+    vehicleMetrics: Record<string, { kmTraveled: number; liters: number; cost: number; avg: number; minKm: number; maxKm: number }>; // Added minKm, maxKm to match calculation
 }
 
-export const SystemReport: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+interface SystemReportProps {
+    preloadedData?: ReportData; // Changed to ReportData type
+    onClose?: () => void;
+}
+
+export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClose }) => {
+    const { profile } = useAuth();
     const [data, setData] = useState<ReportData | null>(null);
     const [loading, setLoading] = useState(true);
     const { addToast } = useToast();
 
     useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
-        if (!isSupabaseConfigured) {
-            addToast('Banco de dados não configurado.', 'error');
+        if (preloadedData) {
+            setData(preloadedData);
             setLoading(false);
             return;
         }
 
-        try {
-            // Data range: let's get everything for a global report, or maybe last 30 days. Let's do all time for now.
-            const [vehRes, damRes, fuelRes, checkRes, profRes] = await Promise.all([
-                supabase.from('vehicles').select('*'),
-                supabase.from('damages').select('*, vehicles(brand, model, plate, color)'),
-                supabase.from('fuel_logs').select('*, vehicles(brand, model, plate, color)').order('created_at', { ascending: false }),
-                supabase.from('checklists').select('*, checklist_items(*), vehicles(brand, model, plate, color)').order('created_at', { ascending: false }),
-                supabase.from('profiles').select('id, full_name')
-            ]);
-
-            if (vehRes.error) throw vehRes.error;
-            if (damRes.error) throw damRes.error;
-            if (fuelRes.error) throw fuelRes.error;
-            if (checkRes.error) throw checkRes.error;
-
-            const vehicles = vehRes.data as Vehicle[];
-            const damages = damRes.data as Damage[];
-            const fuelLogs = fuelRes.data as any[];
-            const checklists = checkRes.data || [];
-            const profiles = profRes.data || [];
-
-            // Calculate Metrics
-            let totalFuelLiters = 0;
-            let totalFuelCost = 0;
-            let pendingDamages = 0;
-            let resolvedDamages = 0;
-
-            const vMetrics: Record<string, { kmTraveled: number; liters: number; cost: number; avg: number; minKm: number; maxKm: number }> = {};
-
-            vehicles.forEach(v => {
-                vMetrics[v.id] = { kmTraveled: 0, liters: 0, cost: 0, avg: 0, minKm: Infinity, maxKm: 0 };
-            });
-
-            fuelLogs.forEach(log => {
-                totalFuelLiters += log.liters;
-                totalFuelCost += log.value;
-                const vid = log.vehicle_id;
-                if (vMetrics[vid]) {
-                    vMetrics[vid].liters += log.liters;
-                    vMetrics[vid].cost += log.value;
-                    if (log.mileage < vMetrics[vid].minKm) vMetrics[vid].minKm = log.mileage;
-                    if (log.mileage > vMetrics[vid].maxKm) vMetrics[vid].maxKm = log.mileage;
-                }
-            });
-
-            let totalKmTraveled = 0;
-            Object.keys(vMetrics).forEach(vid => {
-                const met = vMetrics[vid];
-                if (met.maxKm > met.minKm && met.minKm !== Infinity) {
-                    met.kmTraveled = met.maxKm - met.minKm;
-                    totalKmTraveled += met.kmTraveled;
-                }
-                if (met.liters > 0 && met.kmTraveled > 0) {
-                    met.avg = met.kmTraveled / met.liters;
-                }
-            });
-
-            let avgKmL = 0;
-            if (totalFuelLiters > 0 && totalKmTraveled > 0) {
-                avgKmL = totalKmTraveled / totalFuelLiters;
+        const fetchReportData = async () => {
+            if (!isSupabaseConfigured) {
+                addToast('Banco de dados não configurado.', 'error');
+                setLoading(false);
+                return;
             }
 
-            damages.forEach(d => {
-                if (d.status === 'resolved') resolvedDamages++;
-                else pendingDamages++;
-            });
+            try {
+                // Data range: let's get everything for a global report, or maybe last 30 days. Let's do all time for now.
+                const [vehRes, damRes, fuelRes, checkRes, profRes] = await Promise.all([
+                    supabase.from('vehicles').select('*'),
+                    supabase.from('damages').select('*, vehicles(brand, model, plate, color)'),
+                    supabase.from('fuel_logs').select('*, vehicles(brand, model, plate, color)').order('created_at', { ascending: false }),
+                    supabase.from('checklists').select('*, checklist_items(*), vehicles(brand, model, plate, color)').order('created_at', { ascending: false }),
+                    supabase.from('profiles').select('id, full_name')
+                ]);
 
-            setData({
-                vehicles,
-                damages,
-                fuelLogs,
-                checklists,
-                profiles,
-                metrics: {
-                    totalFuelLiters,
-                    totalFuelCost,
-                    avgKmL,
-                    totalVehicles: vehicles.length,
-                    activeVehicles: vehicles.filter(v => v.status === 'active').length,
-                    maintenanceVehicles: vehicles.filter(v => ['maintenance', 'inactive'].includes(v.status)).length,
-                    pendingDamages,
-                    resolvedDamages
-                },
-                vehicleMetrics: vMetrics
-            });
+                if (vehRes.error) throw vehRes.error;
+                if (damRes.error) throw damRes.error;
+                if (fuelRes.error) throw fuelRes.error;
+                if (checkRes.error) throw checkRes.error;
 
-        } catch (err: any) {
-            console.error(err);
-            addToast('Erro ao gerar relatório.', 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
+                const vehicles = vehRes.data as Vehicle[];
+                const damages = damRes.data as Damage[];
+                const fuelLogs = fuelRes.data as any[];
+                const checklists = checkRes.data || [];
+                const profiles = profRes.data || [];
+
+                // Calculate Metrics
+                let totalFuelLiters = 0;
+                let totalFuelCost = 0;
+                let pendingDamages = 0;
+                let resolvedDamages = 0;
+
+                const vMetrics: Record<string, { kmTraveled: number; liters: number; cost: number; avg: number; minKm: number; maxKm: number }> = {};
+
+                vehicles.forEach(v => {
+                    vMetrics[v.id] = { kmTraveled: 0, liters: 0, cost: 0, avg: 0, minKm: Infinity, maxKm: 0 };
+                });
+
+                fuelLogs.forEach(log => {
+                    totalFuelLiters += log.liters;
+                    totalFuelCost += log.value;
+                    const vid = log.vehicle_id;
+                    if (vMetrics[vid]) {
+                        vMetrics[vid].liters += log.liters;
+                        vMetrics[vid].cost += log.value;
+                        if (log.mileage < vMetrics[vid].minKm) vMetrics[vid].minKm = log.mileage;
+                        if (log.mileage > vMetrics[vid].maxKm) vMetrics[vid].maxKm = log.mileage;
+                    }
+                });
+
+                let totalKmTraveled = 0;
+                Object.keys(vMetrics).forEach(vid => {
+                    const met = vMetrics[vid];
+                    if (met.maxKm > met.minKm && met.minKm !== Infinity) {
+                        met.kmTraveled = met.maxKm - met.minKm;
+                        totalKmTraveled += met.kmTraveled;
+                    }
+                    if (met.liters > 0 && met.kmTraveled > 0) {
+                        met.avg = met.kmTraveled / met.liters;
+                    }
+                });
+
+                let globalAvgConsumption = 0; // Renamed from avgKmL
+                if (totalFuelLiters > 0 && totalKmTraveled > 0) {
+                    globalAvgConsumption = totalKmTraveled / totalFuelLiters;
+                }
+
+                damages.forEach(d => {
+                    if (d.status === 'resolved') resolvedDamages++;
+                    else pendingDamages++;
+                });
+
+                const finalData: ReportData = {
+                    vehicles,
+                    damages,
+                    fuelLogs,
+                    checklists,
+                    profiles,
+                    metrics: {
+                        totalFuelLiters,
+                        totalFuelCost,
+                        globalAvgConsumption, // Updated here
+                        totalVehicles: vehicles.length,
+                        activeVehicles: vehicles.filter(v => v.status === 'active').length,
+                        maintenanceVehicles: vehicles.filter(v => ['maintenance', 'inactive'].includes(v.status)).length,
+                        pendingDamages,
+                        resolvedDamages
+                    },
+                    vehicleMetrics: vMetrics
+                };
+
+                setData(finalData);
+
+                // Automagically save this generated report snapshot to the database if not preloaded
+                if (profile?.role === 'supervisor') {
+                    try {
+                        const monthName = new Date().toLocaleString('pt-BR', { month: 'long' });
+                        const title = `Relatório Geral - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${new Date().getFullYear()}`;
+
+                        // We check if we already saved one today to avoid spam, but for now let's just save it.
+                        await supabase.from('system_reports').insert([{
+                            created_by: profile.id,
+                            title: `${title} (${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})`,
+                            data: finalData
+                        }]);
+                        // Silently fails if table not created yet or fails.
+                    } catch (e) {
+                        console.warn('Failed to save report history', e);
+                    }
+                }
+
+            } catch (err: any) {
+                console.error(err);
+                addToast('Erro ao gerar relatório.', 'error');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchReportData();
+    }, [preloadedData, profile, addToast]); // Added dependencies
 
     const handlePrint = () => {
         window.print();
@@ -140,28 +172,53 @@ export const SystemReport: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     return (
         <div className="fixed inset-0 bg-slate-100 z-[100] flex flex-col overflow-hidden print:bg-white print:z-auto print:static">
             {/* Header bar (Not printed) */}
-            <div className="bg-slate-900 px-6 py-4 flex items-center justify-between shrink-0 print:hidden shadow-lg border-b border-slate-800">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary-500/20 text-primary-400 rounded-lg">
-                        <FileText size={20} />
+            <div className={`bg-white text-slate-900 ${preloadedData ? '' : 'p-8 max-w-[210mm] mx-auto min-h-screen relative'}`} id="printable-report">
+
+                {/* Header (Only show if not preloaded, or maybe show always but with different buttons) */}
+                {!preloadedData && (
+                    <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-slate-200 print:mb-4 print:pb-2">
+                        <div>
+                            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-3">
+                                <Car size={32} className="text-primary-600" />
+                                FleetCheck
+                            </h1>
+                            <p className="text-sm text-slate-500 mt-1 font-medium">Relatório Geral do Sistema</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="font-bold text-slate-800 text-lg">{new Date().toLocaleDateString('pt-BR')}</p>
+                            <p className="text-sm text-slate-500">
+                                Gerado por: <span className="font-bold text-slate-700">{profile?.full_name}</span>
+                            </p>
+                        </div>
                     </div>
-                    <h2 className="text-xl font-bold text-white">Relatório Geral do Sistema</h2>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={handlePrint}
-                        disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50 shadow-lg shadow-primary-900/50"
-                    >
-                        <Printer size={18} /> Imprimir / PDF
-                    </button>
-                    <button
-                        onClick={onClose}
-                        className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors"
-                    >
-                        <X size={24} />
-                    </button>
-                </div>
+                )}
+
+                {/* Control Buttons (Only show if not preloaded) */}
+                {!preloadedData && (
+                    <div className="absolute top-8 right-8 flex gap-3 print:hidden">
+                        <button
+                            onClick={handlePrint}
+                            className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all"
+                        >
+                            <Download size={18} /> Imprimir / PDF
+                        </button>
+                        {onClose && (
+                            <button
+                                onClick={onClose}
+                                className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all"
+                            >
+                                <X size={18} /> Fechar
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {/* Print Title Only for Preloaded (optional fallback if they print the SavedReports wrapper) */}
+                {preloadedData && (
+                    <div className="hidden print:block mb-6 border-b-2 border-slate-200 pb-2">
+                        <h1 className="text-2xl font-extrabold text-slate-800">FleetCheck - Relatório Histórico</h1>
+                    </div>
+                )}
             </div>
 
             {loading ? (
@@ -200,7 +257,7 @@ export const SystemReport: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                                 </div>
                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Média Global</p>
-                                    <p className="text-2xl font-black text-primary-600">{data.metrics.avgKmL.toFixed(1)} <span className="text-sm font-bold text-primary-600/60">km/L</span></p>
+                                    <p className="text-2xl font-black text-primary-600">{data.metrics.globalAvgConsumption.toFixed(1)} <span className="text-sm font-bold text-primary-600/60">km/L</span></p>
                                     <p className="text-xs font-medium text-slate-500 mt-1">Em veículos com múltiplos abastecimentos</p>
                                 </div>
                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">

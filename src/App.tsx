@@ -8,6 +8,7 @@ import { ChecklistForm } from './components/ChecklistForm';
 import { DamageReport } from './components/DamageReport';
 import { FuelLogForm } from './components/FuelLogForm';
 import { FuelListSupervisor } from './components/FuelListSupervisor';
+import { SavedReports } from './components/SavedReports';
 
 const AppContent: React.FC = () => {
   const { user, profile, loading } = useAuth();
@@ -44,6 +45,8 @@ const AppContent: React.FC = () => {
         return <DamageReport />;
       case 'fuel':
         return profile.role === 'supervisor' ? <FuelListSupervisor /> : <FuelLogForm />;
+      case 'reports':
+        return <SavedReports />;
       default:
         return <Dashboard />;
     }
