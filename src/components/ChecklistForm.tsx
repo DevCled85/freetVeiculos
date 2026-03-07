@@ -179,6 +179,11 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
             setSuccess(false);
             setStep(1);
             setSelectedVehicle('');
+            const resetItems: Record<string, { ok: boolean, notes: string }> = {};
+            CHECKLIST_ITEMS.forEach(item => {
+              resetItems[item] = { ok: true, notes: '' };
+            });
+            setItems(resetItems);
           }}
           className="w-full bg-primary-600 text-white font-bold py-3 rounded-xl hover:bg-primary-700 transition-colors"
         >
