@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ToastContainer, useToast } from './Toast';
+import { SystemReport } from './SystemReport';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [stats, setStats] = useState({ totalVehicles: 0, activeVehicles: 0, pendingDamages: 0, recentChecklists: 0 });
   const [recentDamages, setRecentDamages] = useState<Damage[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+
+  // Report
+  const [showReport, setShowReport] = useState(false);
 
   // User management
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -717,7 +721,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Relatórios - placeholder */}
+          {/* Relatórios */}
           <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col relative">
             <div className="absolute top-0 right-0 w-40 h-40 bg-primary-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
             <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-primary-500/5">
@@ -725,21 +729,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <FileText size={18} />
               </div>
               <h3 className="text-base font-bold text-white">Relatórios</h3>
-              <span className="ml-auto text-[10px] font-bold bg-slate-800 border border-slate-700 text-slate-400 px-2 py-0.5 rounded-full">Em breve</span>
             </div>
             <div className="flex-1 flex flex-col items-center justify-center py-10 px-6 text-center gap-4">
               <div className="w-16 h-16 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center">
-                <FileText size={28} className="text-primary-400 opacity-60" />
+                <FileText size={28} className="text-primary-400 opacity-80" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-300">Relatórios do Sistema</p>
-                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Relatórios de avarias, checklists e desempenho da frota estarão disponíveis em breve.</p>
+                <p className="text-sm font-bold text-slate-300">Relatório Geral do Sistema</p>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Emita um relatório completo contendo o resumo da frota, consumos e ocorrências.</p>
               </div>
-              <div className="flex flex-wrap gap-2 justify-center mt-1">
-                {['Avarias', 'Checklists', 'Frota', 'Motoristas'].map(tag => (
-                  <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-500 font-medium">{tag}</span>
-                ))}
-              </div>
+              <button
+                onClick={() => setShowReport(true)}
+                className="mt-2 w-full py-3 bg-primary-600 hover:bg-primary-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary-900/50 flex flex-col items-center justify-center gap-1"
+              >
+                <span>Gerar Relatório Geral</span>
+                <span className="text-[10px] font-medium text-primary-200">Pronto para Impressão / PDF</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1050,6 +1055,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
         </ModalWrapper>
+
+        {/* Report Overlay Component */}
+        {showReport && <SystemReport onClose={() => setShowReport(false)} />}
       </div >
     );
   }

@@ -90,18 +90,42 @@ export const FuelLogForm: React.FC = () => {
     e.preventDefault();
     if (!profile) return;
 
-    // Mileage Validation
     const selectedVehicle = vehicles.find(v => v.id === newLog.vehicle_id);
-    if (selectedVehicle) {
-      if (newLog.mileage < selectedVehicle.mileage) {
-        addToast(`A quilometragem informada (${newLog.mileage} km) não pode ser menor que a atual do veículo (${selectedVehicle.mileage} km).`, 'error');
-        return;
-      }
+    if (!selectedVehicle) {
+      addToast('Selecione um veículo válido.', 'error');
+      return;
     }
 
     setLoading(true);
 
     try {
+      // Mileage Validation
+      const { data: previousLogs, error: prevError } = await supabase
+        .from('fuel_logs')
+        .select('mileage')
+        .eq('vehicle_id', newLog.vehicle_id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (prevError) throw prevError;
+
+      const isFirstLog = !previousLogs || previousLogs.length === 0;
+
+      if (isFirstLog) {
+        if (newLog.mileage < selectedVehicle.mileage) {
+          addToast(`A quilometragem não pode ser menor que a inicial do veículo (${selectedVehicle.mileage} km).`, 'error');
+          setLoading(false);
+          return;
+        }
+      } else {
+        const lastMileage = previousLogs[0].mileage;
+        if (newLog.mileage < lastMileage) {
+          addToast(`A quilometragem não pode ser menor que a do último abastecimento (${lastMileage} km).`, 'error');
+          setLoading(false);
+          return;
+        }
+      }
+
       let finalPhotoUrl = null;
 
       if (photoFile) {
@@ -131,12 +155,6 @@ export const FuelLogForm: React.FC = () => {
         }]);
 
       if (error) throw error;
-
-      // Update vehicle mileage
-      await supabase
-        .from('vehicles')
-        .update({ mileage: newLog.mileage })
-        .eq('id', newLog.vehicle_id);
 
       setIsAdding(false);
       fetchRecentLogs();
