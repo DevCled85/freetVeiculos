@@ -49,22 +49,30 @@ export const SavedReports: React.FC = () => {
     if (selectedReport) {
         return (
             <div className="animate-fade-in">
-                <div className="mb-6 flex items-center justify-between bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                <div className="mb-6 flex items-center justify-between bg-slate-800/50 p-4 rounded-xl border border-slate-700 print:hidden">
                     <button
                         onClick={() => setSelectedReport(null)}
-                        className="flex items-center gap-2 text-slate-300 hover:text-white font-semibold transition-colors bg-slate-700/50 px-4 py-2 rounded-lg hover:bg-slate-700"
+                        className="flex items-center gap-2 text-slate-300 hover:text-white font-semibold transition-colors bg-slate-700/50 px-4 py-2 rounded-lg hover:bg-slate-700 shrink-0"
                     >
                         <ArrowLeft size={20} />
                         Voltar para Lista
                     </button>
-                    <div className="text-right">
-                        <p className="text-white font-bold text-lg">{selectedReport.title}</p>
-                        <p className="text-sm text-slate-400">Gerado por: {selectedReport.profiles?.full_name}</p>
+                    <div className="flex items-center gap-4 text-right">
+                        <div>
+                            <p className="text-white font-bold text-lg">{selectedReport.title}</p>
+                            <p className="text-sm text-slate-400">Gerado por: {selectedReport.profiles?.full_name}</p>
+                        </div>
+                        <button
+                            onClick={() => window.print()}
+                            className="bg-primary-600 text-white px-4 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:bg-primary-500 shadow shadow-primary-500/20 shrink-0 transition-all"
+                        >
+                            <Download size={18} /> Imprimir
+                        </button>
                     </div>
                 </div>
 
                 {/* Render the SystemReport component in read-only preloaded mode */}
-                <div className="border-4 border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative">
+                <div className="border-4 border-slate-800 print:border-0 rounded-3xl print:rounded-none overflow-hidden shadow-2xl print:shadow-none relative">
                     {/* Header indicating it's a snapshot */}
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg z-10 flex items-center gap-2 print:hidden">
                         <Calendar size={14} />
@@ -105,22 +113,30 @@ export const SavedReports: React.FC = () => {
                     {reports.map((report) => (
                         <div
                             key={report.id}
-                            className="bg-slate-800/80 border border-slate-700 hover:border-primary-500/50 rounded-2xl p-6 transition-all hover:shadow-xl hover:-translate-y-1 group"
+                            className="bg-slate-800/80 border border-slate-700 hover:border-primary-500/50 rounded-2xl p-6 transition-all hover:shadow-xl hover:-translate-y-1 group flex flex-col"
                         >
                             <div className="flex items-start justify-between mb-4">
-                                <div className="p-3 bg-primary-500/10 rounded-xl text-primary-400">
+                                <div className="p-3 bg-primary-500/10 rounded-xl text-primary-400 shrink-0">
                                     <FileText size={24} />
                                 </div>
-                                <span className="text-xs font-bold text-slate-500 bg-slate-900 px-2.5 py-1 rounded-md">
-                                    {new Date(report.created_at).toLocaleDateString('pt-BR')}
-                                </span>
+                                <div className="text-right">
+                                    <span className="block text-xs font-bold text-slate-500 bg-slate-900 px-2.5 py-1 rounded-t-md">
+                                        {new Date(report.created_at).toLocaleDateString('pt-BR')}
+                                    </span>
+                                    <span className="block text-[10px] font-mono text-slate-400 bg-slate-900/50 px-2.5 py-0.5 rounded-b-md border-t border-slate-800">
+                                        {new Date(report.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                    </span>
+                                </div>
                             </div>
 
-                            <h3 className="text-lg font-bold text-white mb-2 drop-shadow-sm line-clamp-2">
-                                {report.title}
+                            <h3 className="text-lg font-bold text-white mb-1 drop-shadow-sm">
+                                Relatório Personalizado
                             </h3>
+                            <p className="text-[11px] text-slate-400 mb-6 break-words leading-relaxed font-medium">
+                                {report.title.replace('Relatório Geral - ', '').replace('Relatório Geral ', '')}
+                            </p>
 
-                            <div className="flex items-center gap-2 text-sm text-slate-400 mb-6">
+                            <div className="mt-auto flex items-center gap-2 text-sm text-slate-400 mb-6">
                                 <User size={16} />
                                 <span className="truncate">{report.profiles?.full_name || 'Usuário Desconhecido'}</span>
                             </div>
