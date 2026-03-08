@@ -109,6 +109,7 @@ export const AuditLogs: React.FC = () => {
                         <option value="profiles">Perfis</option>
                         <option value="damages">Avarias</option>
                         <option value="fuel_logs">Abastecimentos</option>
+                        <option value="checklists">Checklists</option>
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
                 </div>
@@ -190,9 +191,16 @@ export const AuditLogs: React.FC = () => {
                                                                     <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
                                                                     Estado Anterior
                                                                 </h4>
-                                                                <pre className="bg-slate-950 p-4 rounded-xl text-[11px] text-slate-300 font-mono overflow-auto max-h-40 border border-slate-800 ring-1 ring-red-500/10">
-                                                                    {JSON.stringify(log.old_data, null, 2)}
-                                                                </pre>
+                                                                <div className="bg-slate-950 p-4 rounded-xl text-[11px] font-mono overflow-auto max-h-60 border border-slate-800 ring-1 ring-red-500/10">
+                                                                    {Object.entries(log.old_data).map(([key, value]) => {
+                                                                        const isChanged = log.new_data && JSON.stringify(log.old_data[key]) !== JSON.stringify(log.new_data[key]);
+                                                                        return (
+                                                                            <div key={key} className={`py-0.5 ${isChanged ? 'bg-red-500/10 text-red-300' : 'text-slate-400'}`}>
+                                                                                <span className="opacity-50">"{key}":</span> {JSON.stringify(value, null, 2)}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
                                                             </div>
                                                         )}
                                                         {log.new_data && (
@@ -201,9 +209,17 @@ export const AuditLogs: React.FC = () => {
                                                                     <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
                                                                     Novo Estado
                                                                 </h4>
-                                                                <pre className="bg-slate-950 p-4 rounded-xl text-[11px] text-slate-300 font-mono overflow-auto max-h-40 border border-slate-800 ring-1 ring-green-500/10">
-                                                                    {JSON.stringify(log.new_data, null, 2)}
-                                                                </pre>
+                                                                <div className="bg-slate-950 p-4 rounded-xl text-[11px] font-mono overflow-auto max-h-60 border border-slate-800 ring-1 ring-green-500/10">
+                                                                    {Object.entries(log.new_data).map(([key, value]) => {
+                                                                        const isChanged = log.old_data && JSON.stringify(log.old_data[key]) !== JSON.stringify(log.new_data[key]);
+                                                                        const isNew = log.old_data && !(key in log.old_data);
+                                                                        return (
+                                                                            <div key={key} className={`py-0.5 ${isNew ? 'bg-green-500/20 text-green-300 font-bold' : isChanged ? 'bg-green-500/10 text-green-300' : 'text-slate-400'}`}>
+                                                                                <span className="opacity-50">"{key}":</span> {JSON.stringify(value, null, 2)}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
                                                             </div>
                                                         )}
                                                         {log.action === 'UPDATE' && log.old_data && log.new_data && (
