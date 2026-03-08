@@ -13,6 +13,17 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState<{ version_number: number } | null>(null);
+
+  React.useEffect(() => {
+    supabase
+      .from('app_versions')
+      .select('version_number')
+      .order('version_number', { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => setVersion(data));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,6 +135,14 @@ export const Login: React.FC = () => {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
+
+        {version && (
+          <div className="mt-8 pt-6 border-t border-slate-800/50 text-center">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+              FleetCheck Gestão • v1.0.{version.version_number}
+            </p>
+          </div>
+        )}
       </motion.div>
     </div>
   );

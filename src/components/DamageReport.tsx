@@ -357,15 +357,14 @@ export const DamageReport: React.FC = () => {
             Filtros
           </button>
         </div>
-        {profile?.role === 'driver' && (
-          <button
-            onClick={() => setIsAdding(true)}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-red-900/50 transition-all"
-          >
-            <Plus size={20} />
-            Reportar Avaria
-          </button>
-        )}
+        {/* All users can now report damages, including supervisors */}
+        <button
+          onClick={() => setIsAdding(true)}
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-red-900/50 transition-all"
+        >
+          <Plus size={20} />
+          Reportar Avaria
+        </button>
       </div>
 
       {/* Damage List */}

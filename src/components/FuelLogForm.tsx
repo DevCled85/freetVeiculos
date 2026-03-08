@@ -81,8 +81,7 @@ export const FuelLogForm: React.FC = () => {
       .from('fuel_logs')
       .select('*, vehicles(brand, model, plate, color, photo_url)')
       .eq('driver_id', profile.id)
-      .order('created_at', { ascending: false })
-      .limit(5);
+      .order('created_at', { ascending: false });
     if (data) setRecentLogs(data as any);
   };
 
@@ -205,6 +204,52 @@ export const FuelLogForm: React.FC = () => {
     }
   };
 
+  // Grouping by relative time
+  const getRelativeCategory = (dateStr: string) => {
+    const logDate = new Date(dateStr);
+    const now = new Date();
+
+    const logDay = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
+    const currentDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const diffDays = Math.floor((currentDay.getTime() - logDay.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Hoje';
+    if (diffDays === 1) return 'Ontem';
+    if (diffDays <= 7) return 'Últimos 7 dias';
+    if (diffDays <= 14) return 'Últimos 14 dias';
+    if (diffDays <= 30) return 'Último 1 mês';
+    if (diffDays <= 60) return 'Últimos 2 meses';
+    if (diffDays <= 90) return 'Últimos 3 meses';
+    if (diffDays <= 180) return 'Últimos 6 meses';
+    if (diffDays <= 365) return 'Último 1 ano';
+    return 'Mais antigos';
+  };
+
+  const groupedLogs = recentLogs.reduce((acc, log) => {
+    const group = getRelativeCategory((log as any).created_at);
+    if (!acc[group]) acc[group] = [];
+    acc[group].push(log as any);
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  const categoryOrder = [
+    'Hoje',
+    'Ontem',
+    'Últimos 7 dias',
+    'Últimos 14 dias',
+    'Último 1 mês',
+    'Últimos 2 meses',
+    'Últimos 3 meses',
+    'Últimos 6 meses',
+    'Último 1 ano',
+    'Mais antigos'
+  ];
+
+  const sortedGroupedLogs = (Object.entries(groupedLogs) as [string, any[]][]).sort(
+    ([a], [b]) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
+  );
+
   if (!profile) return <div className="p-8 text-center text-slate-400">Carregando perfil...</div>;
 
   return (
@@ -226,116 +271,130 @@ export const FuelLogForm: React.FC = () => {
       </div>
 
       {/* Recent Logs List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {recentLogs.length > 0 ? (
-          recentLogs.map((log: any) => {
-            const isToday = new Date(log.created_at).toDateString() === new Date().toDateString();
-            return (
-              <div key={log.id} className="relative mt-4">
-                {isToday && (
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-primary-500 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-full shadow-lg border border-primary-400 whitespace-nowrap shadow-primary-500/50">
-                    Abastecido Hoje
-                  </div>
-                )}
-                <motion.div
-                  layout
-                  className="relative bg-slate-900 rounded-2xl border border-slate-800 shadow-elegant overflow-hidden hover:border-slate-700 transition-colors"
-                >
-                  {/* Vehicle Background Image with Gradient Overlay */}
-                  {log.vehicles?.photo_url && (
-                    <>
-                      <div
-                        className="absolute inset-0 z-0 bg-no-repeat opacity-30 mix-blend-luminosity"
-                        style={{
-                          backgroundImage: `url(${log.vehicles.photo_url})`,
-                          backgroundSize: '80%',
-                          backgroundPosition: 'top right',
-                        }}
-                      />
-                      <div className="absolute inset-0 z-0 bg-gradient-to-tr from-slate-900 via-slate-900/90 to-transparent" />
-                    </>
-                  )}
-
-                  <div className="relative z-10">
-                    <div className="p-5 border-b border-slate-800/50 flex justify-between items-start">
-                      <div>
-                        <h4 className="font-bold text-white text-lg drop-shadow-md">
-                          {log.vehicles?.model} <span className="text-sm font-normal text-slate-300">/ {log.vehicles?.brand}</span>
-                        </h4>
-                        <p className="text-xs text-slate-300 font-medium uppercase tracking-widest mt-1 drop-shadow-md">
-                          {log.vehicles?.plate} {log.vehicles?.color ? `- ${log.vehicles.color}` : ''}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 z-20">
-                        {log.photo_url ? (
-                          <a
-                            href={log.photo_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-2 p-2 px-3 bg-primary-500/80 text-white hover:bg-primary-500 backdrop-blur-sm rounded-xl transition-colors shadow-lg text-[10px] font-bold uppercase"
-                            title="Ver Comprovante"
-                          >
-                            <Camera size={14} /> Comprovante
-                          </a>
-                        ) : (
-                          <label
-                            className={`flex items-center justify-center p-2 bg-red-500/80 text-white hover:bg-red-500 backdrop-blur-sm rounded-xl transition-colors shadow-lg cursor-pointer ${uploadingLogId === log.id ? 'opacity-50 pointer-events-none' : ''}`}
-                            title="Adicionar Comprovante"
-                          >
-                            {uploadingLogId === log.id ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Camera size={18} />}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              capture="environment"
-                              className="hidden"
-                              onChange={(e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                  handleUploadMissingReceipt(log.id, e.target.files[0]);
-                                }
+      <div className="space-y-8">
+        {sortedGroupedLogs.length > 0 ? (
+          sortedGroupedLogs.map(([category, categoryLogs]) => (
+            <div key={category}>
+              {category !== 'Hoje' && (
+                <div className="flex items-center gap-3 mb-4">
+                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] px-2 py-1">
+                    {category}
+                  </h4>
+                  <div className="h-px flex-1 bg-gradient-to-r from-slate-700/30 to-transparent"></div>
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {categoryLogs.map((log: any) => {
+                  const isToday = new Date(log.created_at).toDateString() === new Date().toDateString();
+                  return (
+                    <div key={log.id} className="relative mt-4">
+                      {isToday && (
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-primary-500 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-full shadow-lg border border-primary-400 whitespace-nowrap shadow-primary-500/50">
+                          Abastecido Hoje
+                        </div>
+                      )}
+                      <motion.div
+                        layout
+                        className="relative bg-slate-900 rounded-2xl border border-slate-800 shadow-elegant overflow-hidden hover:border-slate-700 transition-colors"
+                      >
+                        {/* Vehicle Background Image with Gradient Overlay */}
+                        {log.vehicles?.photo_url && (
+                          <>
+                            <div
+                              className="absolute inset-0 z-0 bg-no-repeat opacity-30 mix-blend-luminosity"
+                              style={{
+                                backgroundImage: `url(${log.vehicles.photo_url})`,
+                                backgroundSize: '80%',
+                                backgroundPosition: 'top right',
                               }}
                             />
-                          </label>
+                            <div className="absolute inset-0 z-0 bg-gradient-to-tr from-slate-900 via-slate-900/90 to-transparent" />
+                          </>
                         )}
-                      </div>
-                    </div>
 
-                    <div className="p-5 space-y-4">
-                      <div className="flex items-center gap-3 text-slate-200">
-                        <Calendar size={18} className="text-slate-400" />
-                        <div>
-                          <p className="text-[10px] uppercase font-bold text-slate-400">Data e Hora (Registro exato)</p>
-                          <p className="text-sm">{new Date(log.created_at).toLocaleString('pt-BR', {
-                            day: '2-digit', month: '2-digit', year: 'numeric',
-                            hour: '2-digit', minute: '2-digit'
-                          })}</p>
-                        </div>
-                      </div>
+                        <div className="relative z-10">
+                          <div className="p-5 border-b border-slate-800/50 flex justify-between items-start">
+                            <div>
+                              <h4 className="font-bold text-white text-lg drop-shadow-md">
+                                {log.vehicles?.model} <span className="text-sm font-normal text-slate-300">/ {log.vehicles?.brand}</span>
+                              </h4>
+                              <p className="text-xs text-slate-300 font-medium uppercase tracking-widest mt-1 drop-shadow-md">
+                                {log.vehicles?.plate} {log.vehicles?.color ? `- ${log.vehicles.color}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex gap-2 z-20">
+                              {log.photo_url ? (
+                                <a
+                                  href={log.photo_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-2 p-2 px-3 bg-primary-500/80 text-white hover:bg-primary-500 backdrop-blur-sm rounded-xl transition-colors shadow-lg text-[10px] font-bold uppercase"
+                                  title="Ver Comprovante"
+                                >
+                                  <Camera size={14} /> Comprovante
+                                </a>
+                              ) : (
+                                <label
+                                  className={`flex items-center justify-center p-2 bg-red-500/80 text-white hover:bg-red-500 backdrop-blur-sm rounded-xl transition-colors shadow-lg cursor-pointer ${uploadingLogId === log.id ? 'opacity-50 pointer-events-none' : ''}`}
+                                  title="Adicionar Comprovante"
+                                >
+                                  {uploadingLogId === log.id ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Camera size={18} />}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                        handleUploadMissingReceipt(log.id, e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              )}
+                            </div>
+                          </div>
 
-                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/50 mt-2">
-                        <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/50 p-2 rounded-xl text-center shadow-sm flex flex-col items-center justify-center">
-                          <Droplets size={14} className="text-slate-400 mb-1" />
-                          <p className="text-[9px] uppercase font-bold text-slate-400">Litros</p>
-                          <p className="font-bold text-white text-[11px] whitespace-nowrap">{log.liters.toFixed(1)}L</p>
+                          <div className="p-5 space-y-4">
+                            <div className="flex items-center gap-3 text-slate-200">
+                              <Calendar size={18} className="text-slate-400" />
+                              <div>
+                                <p className="text-[10px] uppercase font-bold text-slate-400">Data e Hora (Registro exato)</p>
+                                <p className="text-sm">{new Date(log.created_at).toLocaleString('pt-BR', {
+                                  day: '2-digit', month: '2-digit', year: 'numeric',
+                                  hour: '2-digit', minute: '2-digit'
+                                })}</p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/50 mt-2">
+                              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/50 p-2 rounded-xl text-center shadow-sm flex flex-col items-center justify-center">
+                                <Droplets size={14} className="text-slate-400 mb-1" />
+                                <p className="text-[9px] uppercase font-bold text-slate-400">Litros</p>
+                                <p className="font-bold text-white text-[11px] whitespace-nowrap">{log.liters.toFixed(1)}L</p>
+                              </div>
+                              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/50 p-2 rounded-xl text-center shadow-sm overflow-hidden flex flex-col items-center justify-center">
+                                <DollarSign size={14} className="text-slate-400 mb-1" />
+                                <p className="text-[9px] uppercase font-bold text-slate-400">Total</p>
+                                <p className="font-bold text-white text-[11px] whitespace-nowrap tracking-tighter" title={log.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}>
+                                  {log.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </p>
+                              </div>
+                              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/50 p-2 rounded-xl text-center shadow-sm flex flex-col items-center justify-center">
+                                <TrendingUp size={14} className="text-slate-400 mb-1" />
+                                <p className="text-[9px] uppercase font-bold text-slate-400">KM</p>
+                                <p className="font-bold text-white text-[11px] whitespace-nowrap">{log.mileage.toLocaleString()}</p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/50 p-2 rounded-xl text-center shadow-sm overflow-hidden flex flex-col items-center justify-center">
-                          <DollarSign size={14} className="text-slate-400 mb-1" />
-                          <p className="text-[9px] uppercase font-bold text-slate-400">Total</p>
-                          <p className="font-bold text-white text-[11px] whitespace-nowrap tracking-tighter" title={log.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}>
-                            {log.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </p>
-                        </div>
-                        <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/50 p-2 rounded-xl text-center shadow-sm flex flex-col items-center justify-center">
-                          <TrendingUp size={14} className="text-slate-400 mb-1" />
-                          <p className="text-[9px] uppercase font-bold text-slate-400">KM</p>
-                          <p className="font-bold text-white text-[11px] whitespace-nowrap">{log.mileage.toLocaleString()}</p>
-                        </div>
-                      </div>
+                      </motion.div>
                     </div>
-                  </div>
-                </motion.div>
+                  );
+                })}
               </div>
-            );
-          })
+            </div>
+          ))
         ) : (
           <div className="bg-slate-900 p-12 rounded-3xl border border-slate-800 border-dashed text-center">
             <Fuel size={48} className="text-slate-600 mx-auto mb-4" />

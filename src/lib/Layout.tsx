@@ -18,7 +18,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase, Notification } from './supabase';
+import { supabase, Notification, AppVersion } from './supabase';
 import { ToastContainer, useToast } from '../components/Toast';
 import logoVidronox from '../medias/logo_vidronox.jpg';
 
@@ -52,7 +52,7 @@ const navItems: NavItem[] = [
   { id: 'checklist', label: 'Checklist', icon: ClipboardCheck, roles: ['driver'] },
   { id: 'damages', label: 'Avarias', icon: AlertTriangle, roles: ['driver', 'supervisor'] },
   { id: 'fuel', label: 'Abastecimento', icon: Fuel, roles: ['driver', 'supervisor'] },
-  { id: 'reports', label: 'Relatórios', icon: FileText, roles: ['driver', 'supervisor'] },
+  { id: 'reports', label: 'Relatórios', icon: FileText, roles: ['supervisor'] },
 ];
 
 export const Layout: React.FC<{
@@ -71,7 +71,20 @@ export const Layout: React.FC<{
   const [pendingDamages, setPendingDamages] = useState<DamagePop[]>([]);
   const [activeDamagePopup, setActiveDamagePopup] = useState<DamagePop | null>(null);
   const [ignoredDamageIds, setIgnoredDamageIds] = useState<string[]>([]);
+  const [version, setVersion] = useState<AppVersion | null>(null);
 
+  useEffect(() => {
+    const fetchVersion = async () => {
+      const { data } = await supabase
+        .from('app_versions')
+        .select('*')
+        .order('version_number', { ascending: false })
+        .limit(1)
+        .single();
+      if (data) setVersion(data);
+    };
+    fetchVersion();
+  }, []);
   useEffect(() => {
     if (!profile) return;
 
@@ -214,7 +227,10 @@ export const Layout: React.FC<{
             <div className="w-10 h-10 bg-slate-800 rounded-xl shadow-sm border border-slate-700 p-0.5 overflow-hidden flex items-center justify-center shrink-0 print:hidden">
               <img src={logoVidronox} alt="Vidronox Logo" className="w-full h-full object-contain mix-blend-screen" />
             </div>
-            <span className="font-extrabold text-xl text-white tracking-tight">FleetCheck</span>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-xl text-white tracking-tight leading-tight">FleetCheck</span>
+              {version && <span className="text-[10px] font-bold text-primary-500/80 uppercase tracking-widest -mt-0.5">v1.0.{version.version_number}</span>}
+            </div>
           </div>
         </div>
 
@@ -264,6 +280,15 @@ export const Layout: React.FC<{
             <LogOut size={20} className="group-hover:text-red-400" />
             Sair
           </button>
+
+          {version && (
+            <div className="mt-4 px-4 pt-4 border-t border-slate-800/30 flex flex-col gap-0.5">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Versão do Sistema</p>
+              <p className="text-[10px] font-mono text-slate-600 truncate" title={version.commit_hash}>
+                Build v1.0.{version.version_number} • {version.commit_hash.substring(0, 7)}
+              </p>
+            </div>
+          )}
         </div>
       </aside>
 

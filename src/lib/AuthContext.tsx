@@ -51,8 +51,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, resetIdleTimer]);
 
   // Logout on page close / tab switch
+  // Aplica a TODOS os usuários (motoristas, supervisores)
   useEffect(() => {
     const handleVisibilityChange = () => {
+      // Se não estiver visível (saiu da aba ou minimizou) e estiver logado, desloga
+      // O 'user' abrange qualquer cargo / perfil
       if (document.visibilityState === 'hidden' && user) {
         signOut();
       }

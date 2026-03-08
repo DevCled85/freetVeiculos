@@ -6,6 +6,8 @@ import { useAuth } from '../lib/AuthContext';
 import { X, Printer, FileText, Download, Loader2, Car } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+
+
 interface SystemReportProps {
     preloadedData?: ReportData; // Changed to ReportData type
     onClose?: () => void;
@@ -80,33 +82,66 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [preloadedData]); // Removed profile and addToast to prevent infinite loops
 
+    // Set document title for PDF filename as soon as report loads
+    useEffect(() => {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        const pdfName = `Relatorio_FleetCheck_${dd}-${mm}-${yyyy}_${hh}h${min}`;
+
+        const originalTitle = document.title;
+        document.title = pdfName;
+
+        return () => {
+            document.title = originalTitle;
+        };
+    }, []);
+
     const handlePrint = () => {
         window.print();
     };
+
+
+
+
 
     return (
         <div className={preloadedData ? "animate-fade-in" : "fixed inset-0 bg-slate-100 z-[100] flex flex-col overflow-hidden print:bg-white print:z-auto print:static"}>
             {/* Header bar (Not printed) */}
             {!preloadedData && (
-                <div className="bg-slate-900 px-6 py-4 flex items-center justify-between shrink-0 print:hidden shadow-lg border-b border-slate-800">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary-500/20 text-primary-400 rounded-lg">
-                            <FileText size={20} />
+                <div className="bg-slate-900 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 print:hidden shadow-lg border-b border-slate-800 gap-4">
+                    <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary-500/20 text-primary-400 rounded-lg shrink-0">
+                                <FileText size={20} />
+                            </div>
+                            <h2 className="text-lg sm:text-xl font-bold text-white truncate">Relatório Geral</h2>
                         </div>
-                        <h2 className="text-xl font-bold text-white">Relatório Geral do Sistema</h2>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={handlePrint}
-                            disabled={loading}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50 shadow-lg shadow-primary-900/50"
-                        >
-                            <Printer size={18} /> Imprimir / PDF
-                        </button>
                         {onClose && (
                             <button
                                 onClick={onClose}
-                                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors"
+                                className="sm:hidden p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors shrink-0"
+                            >
+                                <X size={20} />
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2 sm:w-auto shrink-0">
+                        <button
+                            onClick={handlePrint}
+                            disabled={loading}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-xl font-bold text-sm transition-colors disabled:opacity-50 shadow-lg shadow-primary-900/50 shrink-0"
+                        >
+                            <Printer size={16} /> <span className="hidden sm:inline">Imprimir / PDF</span><span className="sm:hidden">PDF</span>
+                        </button>
+
+                        {onClose && (
+                            <button
+                                onClick={onClose}
+                                className="hidden sm:flex p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors shrink-0"
                             >
                                 <X size={24} />
                             </button>
@@ -121,26 +156,29 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                     <p className="text-slate-500 font-medium">Buscando informações gerais da frota...</p>
                 </div>
             ) : data ? (
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 print:p-0 bg-slate-100 print:bg-white text-slate-800 scrollbar-dark" id="printable-report">
-                    <div className="max-w-5xl mx-auto bg-white print:shadow-none shadow-2xl print:border-0 border border-slate-200 rounded-2xl p-8 md:p-12 print:p-0">
+                <div className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-8 print:p-0 bg-slate-100 print:bg-white text-slate-800 scrollbar-dark" id="printable-report">
+                    <div className="max-w-5xl mx-auto bg-white print:shadow-none shadow-sm sm:shadow-2xl print:border-0 border border-slate-200 rounded-xl sm:rounded-2xl p-4 sm:p-8 md:p-12 print:p-0">
                         {/* Report Header */}
-                        <div className="border-b-2 border-slate-200 pb-6 mb-8 flex items-end justify-between">
-                            <div>
-                                <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-                                    <Car size={32} className="text-primary-600 print:hidden text-slate-800" />
-                                    Relatório de Gestão <span className="text-primary-600">FleetCheck</span>
+                        <div className="border-b-2 border-slate-200 pb-5 mb-8 flex flex-row items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                                <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-2 leading-tight">
+                                    <Car className="text-primary-600 print:hidden shrink-0 w-6 h-6 sm:w-8 sm:h-8" />
+                                    <span className="flex flex-col sm:flex-row sm:gap-1.5 md:gap-2 min-w-0 flex-1">
+                                        <span>Relatório de Gestão</span>
+                                        <span className="text-primary-600">FleetCheck</span>
+                                    </span>
                                 </h1>
-                                <p className="text-slate-500 font-medium mt-1">
+                                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-2">
                                     {startDate || endDate
-                                        ? `Período: ${startDate ? new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início'} até ${endDate ? new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Hoje'} `
+                                        ? `Período: ${startDate ? new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início'} até ${endDate ? new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Hoje'}`
                                         : 'Visão global da frota, consumos e avarias.'}
                                 </p>
                             </div>
-                            <div className="text-right">
-                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Data de Emissão</p>
-                                <p className="text-lg font-bold text-slate-700">{createdAt ? new Date(createdAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}</p>
-                                <p className="text-xs font-mono text-slate-500 mb-1">{createdAt ? new Date(createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
-                                <p className="text-sm text-slate-500 mt-1">
+                            <div className="text-right shrink-0">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Data de Emissão</p>
+                                <p className="text-base font-bold text-slate-700">{createdAt ? new Date(createdAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}</p>
+                                <p className="text-[10px] font-mono text-slate-500 mb-1">{createdAt ? new Date(createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+                                <p className="text-[10px] text-slate-500 mt-1">
                                     Gerado por: <span className="font-bold text-slate-700">
                                         {preloadedData ? 'Registro Histórico' : profile?.full_name}
                                     </span>
@@ -151,7 +189,7 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                         {/* 1. Resumo Executivo */}
                         <section className="mb-10 page-break-inside-avoid">
                             <h2 className="text-xl font-bold text-slate-800 mb-4 border-l-4 border-primary-500 pl-3">Resumo Executivo</h2>
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Frota</p>
                                     <p className="text-2xl font-black text-slate-800">{data.metrics.totalVehicles}</p>
@@ -178,15 +216,15 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                         {/* 2. Consumo por Veículo */}
                         <section className="mb-10 page-break-inside-avoid">
                             <h2 className="text-xl font-bold text-slate-800 mb-4 border-l-4 border-primary-500 pl-3">Consumo por Veículo</h2>
-                            <div className="overflow-hidden rounded-xl border border-slate-200">
-                                <table className="w-full text-left text-sm whitespace-nowrap">
-                                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-widest">
+                            <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                <table className="w-full table-fixed text-left text-sm whitespace-nowrap">
+                                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[9px] sm:text-[10px] tracking-widest leading-none sm:leading-tight">
                                         <tr>
-                                            <th className="px-4 py-3">Veículo</th>
-                                            <th className="px-4 py-3 text-right">Km Rodado</th>
-                                            <th className="px-4 py-3 text-right">Litros Cons.</th>
-                                            <th className="px-4 py-3 text-center">Média (km/L)</th>
-                                            <th className="px-4 py-3 text-right">Custo Total</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 w-[26%] sm:w-[35%] align-bottom break-words whitespace-normal">Veículo</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right w-[17%] align-bottom break-words whitespace-normal">Km Rodado</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right w-[18%] align-bottom break-words whitespace-normal">Litros Cons.</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center w-[18%] align-bottom break-words whitespace-normal">Média (km/L)</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-right w-[21%] align-bottom break-words whitespace-normal">Custo Total</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -196,28 +234,36 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                             const vLogs = data.fuelLogs.filter((log: any) => log.vehicle_id === v.id);
                                             return (
                                                 <React.Fragment key={v.id}>
-                                                    <tr className="hover:bg-slate-50 bg-slate-50/50">
-                                                        <td className="px-4 py-3 font-bold text-slate-800 capitalize">
-                                                            {v.model.toLowerCase()} - {v.plate}
-                                                            {v.color && <span className="text-slate-500 font-normal ml-1">({v.color})</span>}
+                                                    <tr className="hover:bg-slate-50 bg-slate-50/50 text-[10px] sm:text-sm">
+                                                        <td className="px-1.5 sm:px-4 py-2 sm:py-3 font-bold text-slate-800 capitalize whitespace-normal break-words align-middle overflow-hidden text-ellipsis">
+                                                            <span className="hidden sm:inline">{v.model.toLowerCase()} - </span>
+                                                            <span>{v.plate}</span>
+                                                            <div className="text-slate-500 font-normal mt-0.5 sm:mt-0 sm:inline sm:ml-1 text-[9px] sm:text-sm leading-none sm:leading-normal">({v.color || '-'})</div>
                                                         </td>
-                                                        <td className="px-4 py-3 text-right text-slate-600 font-medium">{m.kmTraveled > 0 ? m.kmTraveled.toLocaleString() : '-'}</td>
-                                                        <td className="px-4 py-3 text-right text-slate-600 font-medium">{m.liters.toFixed(1)}</td>
-                                                        <td className="px-4 py-3 text-center font-bold text-primary-600">{m.avg > 0 ? m.avg.toFixed(1) : '-'}</td>
-                                                        <td className="px-4 py-3 text-right font-bold text-slate-800">{m.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                                        <td className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right text-slate-600 font-medium whitespace-nowrap align-middle">{m.kmTraveled > 0 ? m.kmTraveled.toLocaleString() : '-'}</td>
+                                                        <td className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right text-slate-600 font-medium whitespace-nowrap align-middle">{m.liters.toFixed(1)}</td>
+                                                        <td className="px-1.5 sm:px-4 py-2 sm:py-3 text-center font-bold text-primary-600 whitespace-nowrap align-middle">{m.avg > 0 ? m.avg.toFixed(1) : '-'}</td>
+                                                        <td className="px-1.5 sm:px-4 py-2 sm:py-3 text-right font-bold text-slate-800 whitespace-nowrap align-middle">{m.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                                                     </tr>
                                                     {vLogs.length > 0 && (
                                                         <tr>
-                                                            <td colSpan={5} className="px-4 py-2 bg-white border-b border-slate-100">
-                                                                <div className="pl-4 border-l-2 border-slate-200">
-                                                                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest">Histórico de Abastecimentos</p>
-                                                                    <div className="flex flex-wrap gap-2">
+                                                            <td colSpan={5} className="px-2 sm:px-4 py-2 sm:py-3 bg-white border-b border-slate-100">
+                                                                <div className="pl-2 sm:pl-4 border-l-2 border-slate-200">
+                                                                    <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 mb-1 sm:mb-2 tracking-widest">Histórico de Abastecimentos</p>
+                                                                    <div className="flex flex-row flex-wrap gap-1.5 sm:gap-2">
                                                                         {vLogs.map((log: any) => (
-                                                                            <span key={log.id} className="inline-block bg-slate-100 px-2 py-1 rounded text-xs text-slate-600 font-medium border border-slate-200">
-                                                                                {new Date(log.created_at).toLocaleDateString('pt-BR')} às {new Date(log.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                                                <span className="text-slate-400 mx-1">•</span>
-                                                                                {log.liters}L
-                                                                            </span>
+                                                                            <div key={log.id} className="inline-flex flex-col sm:flex-row sm:items-center bg-slate-100 px-2 py-1.5 sm:px-2 sm:py-1 rounded text-[9px] sm:text-xs text-slate-700 font-medium border border-slate-200 text-center sm:text-left leading-tight">
+                                                                                <span className="text-slate-500">{new Date(log.created_at).toLocaleDateString('pt-BR')} às {new Date(log.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                                <span className="text-slate-300 mx-1">•</span>
+                                                                                <span className="font-bold text-slate-800">{log.liters}L</span>
+                                                                                {log.cost > 0 && (
+                                                                                    <>
+                                                                                        <span className="text-slate-300 mx-1 hidden sm:inline">-</span>
+                                                                                        <span className="text-slate-600 text-[8px] sm:text-[11px] mt-0.5 sm:mt-0 font-bold">{log.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                                                                    </>
+                                                                                )}
+                                                                                {log.profiles?.full_name && <span className="text-slate-400 italic mt-0.5 sm:mt-0 text-[8px] sm:text-[11px] sm:ml-1 hidden sm:inline-block">({log.profiles.full_name})</span>}
+                                                                            </div>
                                                                         ))}
                                                                     </div>
                                                                 </div>
@@ -257,21 +303,27 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                             </div>
                         </section>
 
-                        {/* 4. Resumo de Ocorrências e Procedimentos */}
                         <section className="page-break-inside-avoid">
                             <h2 className="text-xl font-bold text-slate-800 mb-4 border-l-4 border-primary-500 pl-3">Ocorrências (Avarias Recentes)</h2>
                             {data.damages.length === 0 ? (
                                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm text-slate-500">Nenhuma avaria registrada no sistema.</div>
                             ) : (
-                                <div className="overflow-hidden rounded-xl border border-slate-200">
-                                    <table className="w-full text-left text-sm whitespace-nowrap">
-                                        <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-widest">
+                                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                    <table className="w-full table-fixed text-left whitespace-nowrap">
+                                        <colgroup>
+                                            <col className="w-[90px]" />
+                                            <col className="w-[90px]" />
+                                            <col />
+                                            <col className="w-[60px]" />
+                                            <col className="w-[75px]" />
+                                        </colgroup>
+                                        <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[9px] tracking-widest">
                                             <tr>
-                                                <th className="px-4 py-3">Data</th>
-                                                <th className="px-4 py-3">Veículo</th>
-                                                <th className="px-4 py-3 w-1/3">Descrição</th>
-                                                <th className="px-4 py-3">Prioridade</th>
-                                                <th className="px-4 py-3">Status</th>
+                                                <th className="px-2 py-2">Data</th>
+                                                <th className="px-2 py-2">Veículo</th>
+                                                <th className="px-2 py-2">Descrição</th>
+                                                <th className="px-2 py-2">Prior.</th>
+                                                <th className="px-2 py-2">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -281,23 +333,23 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
                                             }).slice(0, 20).map(d => (
                                                 <tr key={d.id} className="hover:bg-slate-50">
-                                                    <td className="px-4 py-3 text-slate-600 font-medium truncate max-w-[120px]">
-                                                        {new Date(d.created_at).toLocaleDateString('pt-BR')} <span className="text-xs text-slate-400 block">{new Date(d.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    <td className="px-2 py-2 text-[10px] text-slate-600 font-medium">
+                                                        {new Date(d.created_at).toLocaleDateString('pt-BR')} <span className="text-slate-400 block">{new Date(d.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                                                     </td>
-                                                    <td className="px-4 py-3 font-bold text-slate-800">
+                                                    <td className="px-2 py-2 text-[10px] font-bold text-slate-800">
                                                         {(d as any).vehicles?.plate || '-'}
-                                                        {(d as any).vehicles?.color && <span className="text-xs text-slate-500 font-normal block">{(d as any).vehicles.color}</span>}
+                                                        {(d as any).vehicles?.color && <span className="text-[9px] text-slate-500 font-normal block">{(d as any).vehicles.color}</span>}
                                                     </td>
-                                                    <td className="px-4 py-3 text-slate-700 text-sm whitespace-normal">{d.description}</td>
-                                                    <td className="px-4 py-3">
-                                                        <span className={`px - 2 py - 0.5 rounded - full text - [10px] font - bold uppercase tracking - widest ${d.priority === 'high' ? 'bg-red-100 text-red-700' : d.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'} `}>
+                                                    <td className="px-2 py-2 text-[10px] text-slate-700 whitespace-normal">{d.description}</td>
+                                                    <td className="px-2 py-2">
+                                                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${d.priority === 'high' ? 'bg-red-100 text-red-700' : d.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
                                                             {d.priority === 'high' ? 'Alta' : d.priority === 'medium' ? 'Média' : 'Baixa'}
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-3">
+                                                    <td className="px-2 py-2">
                                                         {d.status === 'pending'
-                                                            ? <span className="text-red-500 font-bold text-xs uppercase">Pendente</span>
-                                                            : <span className="text-emerald-500 font-bold text-xs uppercase">Resolvido ✅</span>}
+                                                            ? <span className="text-red-500 font-bold text-[9px] uppercase">Pendente</span>
+                                                            : <span className="text-emerald-500 font-bold text-[9px] uppercase">Resolvido ✅</span>}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -316,14 +368,20 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                             {data.checklists.length === 0 ? (
                                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm text-slate-500">Nenhum checklist registrado.</div>
                             ) : (
-                                <div className="overflow-hidden rounded-xl border border-slate-200">
-                                    <table className="w-full text-left text-sm whitespace-nowrap">
-                                        <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-widest">
+                                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                    <table className="w-full table-fixed text-left whitespace-nowrap">
+                                        <colgroup>
+                                            <col className="w-[90px]" />
+                                            <col className="w-[90px]" />
+                                            <col className="w-[90px]" />
+                                            <col />
+                                        </colgroup>
+                                        <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[9px] tracking-widest">
                                             <tr>
-                                                <th className="px-4 py-3">Data e Hora</th>
-                                                <th className="px-4 py-3">Veículo</th>
-                                                <th className="px-4 py-3">Motorista</th>
-                                                <th className="px-4 py-3">Status & Pendências</th>
+                                                <th className="px-2 py-2">Data e Hora</th>
+                                                <th className="px-2 py-2">Veículo</th>
+                                                <th className="px-2 py-2">Motorista</th>
+                                                <th className="px-2 py-2">Status & Pendências</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -337,28 +395,28 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
 
                                                 return (
                                                     <tr key={c.id} className="hover:bg-slate-50">
-                                                        <td className="px-4 py-3 text-slate-600 font-medium align-top">
+                                                        <td className="px-2 py-2 text-[10px] text-slate-600 font-medium align-top">
                                                             {new Date(c.created_at).toLocaleDateString('pt-BR')} <br />
-                                                            <span className="text-xs text-slate-400">{new Date(c.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            <span className="text-[9px] text-slate-400">{new Date(c.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                                                         </td>
-                                                        <td className="px-4 py-3 font-bold text-slate-800 align-top">
+                                                        <td className="px-2 py-2 text-[10px] font-bold text-slate-800 align-top">
                                                             {c.vehicles?.plate || '-'}
-                                                            {c.vehicles?.color && <span className="text-xs text-slate-500 font-normal block">{c.vehicles.color}</span>}
+                                                            {c.vehicles?.color && <span className="text-[9px] text-slate-500 font-normal block">{c.vehicles.color}</span>}
                                                         </td>
-                                                        <td className="px-4 py-3 text-slate-700 align-top">{driver}</td>
-                                                        <td className="px-4 py-3 align-top whitespace-normal">
+                                                        <td className="px-2 py-2 text-[10px] text-slate-700 align-top whitespace-normal">{driver}</td>
+                                                        <td className="px-2 py-2 align-top whitespace-normal">
                                                             {c.status === 'resolved' ? (
                                                                 <div>
-                                                                    <span className="text-emerald-500 font-bold text-sm flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Concluído / OK</span>
-                                                                    <p className="text-xs text-slate-500 mt-1">Todos os itens conferidos e resolvidos.</p>
+                                                                    <span className="text-emerald-500 font-bold text-[10px] flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Concluído / OK</span>
+                                                                    <p className="text-[9px] text-slate-500 mt-1">Todos os itens conferidos e resolvidos.</p>
                                                                 </div>
                                                             ) : (
                                                                 <div>
-                                                                    <span className="text-red-500 font-bold text-sm flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Com Pendências</span>
+                                                                    <span className="text-red-500 font-bold text-[10px] flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Com Pendências</span>
                                                                     {badItems.length > 0 && (
-                                                                        <ul className="mt-2 space-y-1">
+                                                                        <ul className="mt-1 space-y-0.5">
                                                                             {badItems.map((bi: any) => (
-                                                                                <li key={bi.id} className="text-[11px] text-slate-600 bg-red-50 p-1.5 rounded border border-red-100">
+                                                                                <li key={bi.id} className="text-[9px] text-slate-600 bg-red-50 p-1 rounded border border-red-100">
                                                                                     <span className="font-bold">{bi.item_name}:</span> {bi.notes || 'Sem observação'}
                                                                                 </li>
                                                                             ))}
@@ -382,15 +440,58 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                     </div>
                 </div>
             ) : null}
-
-            {/* Tailwind Print Overrides to Ensure clean print */}
+            {/* Print CSS */}
             <style>{`
 @media print {
-    @page { margin: 10mm; }
-          body { background: white!important; }
-          .page -break-inside - avoid { break-inside: avoid; }
+    @page {
+        size: A4;
+        margin: 6mm 10mm 18mm 10mm;
+    }
+    body {
+        background: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    #printable-report {
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+    #printable-report > div {
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+    }
+    section {
+        break-inside: avoid;
+    }
+    table { break-inside: auto; }
+    tr { break-inside: avoid; break-after: auto; }
+    thead { display: table-header-group; }
+    .page-break-inside-avoid { break-inside: avoid; }
+
+    /* Fixed footer that repeats on every page */
+    .print-page-footer {
+        display: block !important;
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        height: 12mm;
+        padding: 2mm 6mm 2mm 6mm;
+        text-align: right;
+        font-size: 7pt;
+        color: #94a3b8;
+        font-family: system-ui, -apple-system, sans-serif;
+        letter-spacing: 0.05em;
+    }
 }
 `}</style>
+
+            {/* Page footer visible only in print */}
+            <div className="print-page-footer" style={{ display: 'none' }}>
+                FleetCheck — Relatório de Gestão
+            </div>
         </div>
     );
 };

@@ -6,15 +6,21 @@ import { motion, AnimatePresence } from 'motion/react';
 import { SystemReport } from './SystemReport';
 import { useToast } from './Toast';
 
+
+
 export const SavedReports: React.FC = () => {
     const { profile } = useAuth();
     const { addToast } = useToast();
     const [reports, setReports] = useState<any[]>([]);
     const [monthlyReports, setMonthlyReports] = useState<any[]>([]);
+    const [groupedReports, setGroupedReports] = useState<{ label: string; reports: any[] }[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReport, setSelectedReport] = useState<any | null>(null);
     const [deleteModal, setDeleteModal] = useState<{ id: string; type: 'monthly' | 'system' } | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+
+
+
 
     useEffect(() => {
         const handleOpenMonthly = (e: any) => {
@@ -45,11 +51,41 @@ export const SavedReports: React.FC = () => {
 
             setReports(systemRes.data || []);
             setMonthlyReports(monthlyRes.data || []);
+            groupReportsByAge(systemRes.data || []);
         } catch (err: any) {
             console.error('Catch error:', err);
         } finally {
             setLoading(false);
         }
+    };
+
+    const groupReportsByAge = (reportsList: any[]) => {
+        const now = new Date();
+        const groups: { label: string; maxDays: number; minDays: number; reports: any[] }[] = [
+            { label: 'Hoje', maxDays: 1, minDays: 0, reports: [] },
+            { label: 'Últimos 7 dias', maxDays: 7, minDays: 1, reports: [] },
+            { label: 'Últimos 14 dias', maxDays: 14, minDays: 7, reports: [] },
+            { label: 'Último Mês', maxDays: 30, minDays: 14, reports: [] },
+            { label: 'Últimos 2 Meses', maxDays: 60, minDays: 30, reports: [] },
+            { label: 'Últimos 3 Meses', maxDays: 90, minDays: 60, reports: [] },
+            { label: 'Mais Antigos', maxDays: Infinity, minDays: 90, reports: [] }
+        ];
+
+        reportsList.forEach(report => {
+            const reportDate = new Date(report.created_at);
+            const diffTime = Math.abs(now.getTime() - reportDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            for (const group of groups) {
+                if (diffDays <= group.maxDays && diffDays > group.minDays) {
+                    group.reports.push(report);
+                    break;
+                }
+            }
+        });
+
+        // Filter out empty groups
+        setGroupedReports(groups.filter(g => g.reports.length > 0).map(g => ({ label: g.label, reports: g.reports })));
     };
 
     const handleDelete = async () => {
@@ -63,7 +99,9 @@ export const SavedReports: React.FC = () => {
             if (deleteModal.type === 'monthly') {
                 setMonthlyReports(prev => prev.filter(r => r.id !== deleteModal.id));
             } else {
-                setReports(prev => prev.filter(r => r.id !== deleteModal.id));
+                const newReports = reports.filter(r => r.id !== deleteModal.id);
+                setReports(newReports);
+                groupReportsByAge(newReports);
             }
 
             addToast('Relatório apagado com sucesso.', 'success');
@@ -87,24 +125,25 @@ export const SavedReports: React.FC = () => {
     if (selectedReport) {
         return (
             <div className="animate-fade-in">
-                <div className="mb-6 flex items-center justify-between bg-slate-800/50 p-4 rounded-xl border border-slate-700 print:hidden">
+                <div className="mb-6 flex flex-col lg:flex-row lg:items-center justify-between bg-slate-800/50 p-3 sm:p-4 rounded-xl border border-slate-700 print:hidden gap-3 sm:gap-4">
                     <button
                         onClick={() => setSelectedReport(null)}
-                        className="flex items-center gap-2 text-slate-300 hover:text-white font-semibold transition-colors bg-slate-700/50 px-4 py-2 rounded-lg hover:bg-slate-700 shrink-0"
+                        className="flex items-center justify-center gap-2 text-slate-300 hover:text-white font-medium text-sm transition-colors bg-slate-700/50 px-4 py-2 rounded-lg hover:bg-slate-700 shrink-0 w-full sm:w-auto sm:self-start lg:self-auto"
                     >
-                        <ArrowLeft size={20} />
+                        <ArrowLeft size={16} />
                         Voltar para Lista
                     </button>
-                    <div className="flex items-center gap-4 text-right">
-                        <div>
-                            <p className="text-white font-bold text-lg">{selectedReport.title}</p>
-                            <p className="text-sm text-slate-400">Gerado por: {selectedReport.profiles?.full_name}</p>
+
+                    <div className="flex flex-col sm:flex-row items-center justify-between lg:justify-end gap-3 w-full lg:w-auto min-w-0 flex-1">
+                        <div className="min-w-0 w-full text-center sm:text-right flex-1">
+                            <p className="text-white font-bold text-sm break-words w-full" title={selectedReport.title}>{selectedReport.title}</p>
+                            <p className="text-[10px] text-slate-400 break-words mt-0.5 w-full">Gerado por: {selectedReport.profiles?.full_name}</p>
                         </div>
                         <button
                             onClick={() => window.print()}
-                            className="bg-primary-600 text-white px-4 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:bg-primary-500 shadow shadow-primary-500/20 shrink-0 transition-all"
+                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 shadow shadow-emerald-500/20 shrink-0 transition-all border border-emerald-500/30 w-full sm:w-auto"
                         >
-                            <Download size={18} /> Imprimir
+                            <Download size={16} /> Imprimir
                         </button>
                     </div>
                 </div>
@@ -112,9 +151,15 @@ export const SavedReports: React.FC = () => {
                 {/* Render the SystemReport component in read-only preloaded mode */}
                 <div className="border-4 border-slate-800 print:border-0 rounded-3xl print:rounded-none overflow-hidden shadow-2xl print:shadow-none relative">
                     {/* Header indicating it's a snapshot */}
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg z-10 flex items-center gap-2 print:hidden">
-                        <Calendar size={14} />
-                        Cópia Histórica ({new Date(selectedReport.created_at).toLocaleDateString('pt-BR')})
+                    <div className="bg-amber-500 text-black px-3 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest shadow-md flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 print:hidden z-10 relative">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                            <Calendar size={14} className="sm:w-4 sm:h-4 shrink-0" />
+                            <span className="text-center sm:text-left break-words">Cópia Histórica</span>
+                        </div>
+                        <span className="hidden sm:inline opacity-50 shrink-0">•</span>
+                        <span className="text-center sm:text-left break-words w-full sm:w-auto mt-0.5 sm:mt-0 text-[9px] sm:text-xs md:text-sm">
+                            Gerado em {new Date(selectedReport.created_at).toLocaleDateString('pt-BR')} às {new Date(selectedReport.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </span>
                     </div>
 
                     {/* The Report itself */}
@@ -185,8 +230,9 @@ export const SavedReports: React.FC = () => {
                                     className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-900/50"
                                 >
                                     <Eye size={18} />
-                                    Visualizar Relatório
+                                    Visualizar
                                 </button>
+
                             </div>
                         ))}
                     </div>
@@ -198,7 +244,7 @@ export const SavedReports: React.FC = () => {
                 Relatórios Personalizados
             </h3>
 
-            {reports.length === 0 ? (
+            {groupedReports.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-12 bg-slate-800/30 border border-slate-700/50 rounded-3xl text-center">
                     <div className="p-4 bg-slate-800 rounded-full mb-4">
                         <FileText size={32} className="text-slate-500" />
@@ -209,53 +255,74 @@ export const SavedReports: React.FC = () => {
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {reports.map((report) => (
-                        <div
-                            key={report.id}
-                            className="bg-slate-800/80 border border-slate-700 hover:border-primary-500/50 rounded-2xl p-6 transition-all hover:shadow-xl hover:-translate-y-1 group flex flex-col"
-                        >
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="p-3 bg-primary-500/10 rounded-xl text-primary-400 shrink-0">
-                                    <FileText size={24} />
-                                </div>
-                                <div className="text-right">
-                                    <span className="block text-xs font-bold text-slate-500 bg-slate-900 px-2.5 py-1 rounded-t-md">
-                                        {new Date(report.created_at).toLocaleDateString('pt-BR')}
-                                    </span>
-                                    <span className="block text-[10px] font-mono text-slate-400 bg-slate-900/50 px-2.5 py-0.5 rounded-b-md border-t border-slate-800">
-                                        {new Date(report.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                    </span>
-                                </div>
+                <div className="space-y-12">
+                    {groupedReports.map((group, index) => (
+                        <div key={index}>
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="h-px bg-slate-700/50 flex-1"></div>
+                                {group.label === 'Hoje' ? (
+                                    <div className="bg-primary-500/20 border border-primary-500/30 text-primary-400 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-primary-500/10">
+                                        <Calendar size={14} />
+                                        {group.label}
+                                    </div>
+                                ) : (
+                                    <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap">
+                                        {group.label}
+                                    </h4>
+                                )}
+                                <div className="h-px bg-slate-700/50 flex-1"></div>
                             </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                                {group.reports.map((report) => (
+                                    <div
+                                        key={report.id}
+                                        className="bg-slate-800/80 border border-slate-700 hover:border-primary-500/50 rounded-2xl p-6 transition-all hover:shadow-xl hover:-translate-y-1 group flex flex-col"
+                                    >
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="p-3 bg-primary-500/10 rounded-xl text-primary-400 shrink-0">
+                                                <FileText size={24} />
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-xs font-bold text-slate-500 bg-slate-900 px-2.5 py-1 rounded-t-md">
+                                                    {new Date(report.created_at).toLocaleDateString('pt-BR')}
+                                                </span>
+                                                <span className="block text-[10px] font-mono text-slate-400 bg-slate-900/50 px-2.5 py-0.5 rounded-b-md border-t border-slate-800">
+                                                    {new Date(report.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        </div>
 
-                            <h3 className="text-lg font-bold text-white mb-1 drop-shadow-sm">
-                                Relatório Personalizado
-                            </h3>
-                            <p className="text-[11px] text-slate-400 mb-6 break-words leading-relaxed font-medium">
-                                {report.title.replace('Relatório Geral - ', '').replace('Relatório Geral ', '')}
-                            </p>
+                                        <h3 className="text-lg font-bold text-white mb-1 drop-shadow-sm">
+                                            Relatório Personalizado
+                                        </h3>
+                                        <p className="text-[11px] text-slate-400 mb-6 break-words leading-relaxed font-medium">
+                                            {report.title.replace('Relatório Geral - ', '').replace('Relatório Geral ', '')}
+                                        </p>
 
-                            <div className="mt-auto flex items-center gap-2 text-sm text-slate-400 mb-6">
-                                <User size={16} />
-                                <span className="truncate">{report.profiles?.full_name || 'Usuário Desconhecido'}</span>
-                            </div>
+                                        <div className="mt-auto flex items-center gap-2 text-sm text-slate-400 mb-6">
+                                            <User size={16} />
+                                            <span className="truncate">{report.profiles?.full_name || 'Usuário Desconhecido'}</span>
+                                        </div>
 
-                            <div className="mt-auto flex gap-2">
-                                <button
-                                    onClick={() => setSelectedReport(report)}
-                                    className="flex-1 py-2.5 bg-slate-700/50 hover:bg-primary-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors border border-slate-600 hover:border-primary-500"
-                                >
-                                    <Eye size={18} />
-                                    Visualizar
-                                </button>
-                                <button
-                                    onClick={() => setDeleteModal({ id: report.id, type: 'system' })}
-                                    className="px-3 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold rounded-xl flex items-center justify-center transition-colors border border-red-500/20"
-                                    title="Apagar Relatório"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
+                                        <div className="mt-auto flex gap-2">
+                                            <button
+                                                onClick={() => setSelectedReport(report)}
+                                                className="flex-1 py-2.5 bg-slate-700/50 hover:bg-primary-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors border border-slate-600 hover:border-primary-500"
+                                            >
+                                                <Eye size={18} />
+                                                Visualizar
+                                            </button>
+
+                                            <button
+                                                onClick={() => setDeleteModal({ id: report.id, type: 'system' })}
+                                                className="px-3 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold rounded-xl flex items-center justify-center transition-colors border border-red-500/20"
+                                                title="Apagar Relatório"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     ))}

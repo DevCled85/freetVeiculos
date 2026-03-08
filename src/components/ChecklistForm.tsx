@@ -42,7 +42,13 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<string>(initialVehicleId || '');
   const [step, setStep] = useState(initialVehicleId ? 2 : 1);
-  const [items, setItems] = useState<Record<string, { ok: boolean, notes: string }>>({});
+  const [items, setItems] = useState<Record<string, { ok: boolean, notes: string }>>(() => {
+    const initial: Record<string, { ok: boolean, notes: string }> = {};
+    CHECKLIST_ITEMS.forEach(item => {
+      initial[item] = { ok: true, notes: '' };
+    });
+    return initial;
+  });
   const [todayChecklists, setTodayChecklists] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -65,12 +71,8 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
     };
     fetchVehicles();
 
-    // Initialize items
-    const initialItems: Record<string, { ok: boolean, notes: string }> = {};
-    CHECKLIST_ITEMS.forEach(item => {
-      initialItems[item] = { ok: true, notes: '' };
-    });
-    setItems(initialItems);
+    // Items are now initialized synchronously in useState, so we don't need to do it here
+
 
     if (isSupabaseConfigured) {
       const channel = supabase.channel('checklist-form-updates')
@@ -282,7 +284,15 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
             </div>
             <button
               disabled={!selectedVehicle}
-              onClick={() => setStep(2)}
+              onClick={() => {
+                // Reset items when starting a new checklist
+                const resetItems: Record<string, { ok: boolean, notes: string }> = {};
+                CHECKLIST_ITEMS.forEach(item => {
+                  resetItems[item] = { ok: true, notes: '' };
+                });
+                setItems(resetItems);
+                setStep(2);
+              }}
               className="w-full mt-8 bg-primary-600 disabled:opacity-50 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-primary-700 transition-all"
             >
               Continuar

@@ -79,3 +79,11 @@ export type Notification = {
   read: boolean;
   created_at: string;
 };
+
+export type AppVersion = {
+  id: number;
+  version_number: number;
+  commit_hash: string;
+  commit_message: string;
+  created_at: string;
+};

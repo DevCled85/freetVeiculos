@@ -9,18 +9,18 @@ FleetCheck é um sistema completo e moderno para a gestão de veículos, checkli
 
 ## 🚀 Funcionalidades Principais
 
-- **Dashboard Administrativo**: Visão panóptica de toda a frota, métricas em tempo real, avarias pendentes, veículos ativos e checklists recentes através de gráficos atualizados nativamente e cards modulares.
-- **Gestão de Perfil Segura**: Motoristas e Supervisores possuem áreas de perfis próprios com controle de foto (Uploads para storage na nuvem), alteração de senha segura e configuração de números de Telefone/WhatsApp para recebimento de alertas.
-- **Checklist Diário Passo a Passo**: UX moderna através de sub-formulários onde os motoristas atestam a saúde diária do carro (Pneus, Limpeza, Motor, Elétrica, etc) de maneira fluida pelo celular ou desktop.
-- **Relatos Multimídia de Avarias**: Registro rápido detalhando prioridades de manutenção (Baixa, Média, Alta) e upload das provas visuais do prejuízo ou ocorrência.
+- **Dashboard Administrativo**: Visão panóptica de toda a frota, métricas em tempo real, avarias pendentes, veículos ativos e checklists recentes através de gráficos dinâmicos e cards modulares.
+- **Gerador de Relatórios Avançados (PDF)**: Motor de relatórios configuráveis com filtros de data granulares, gerando PDFs profissionais com histórico de checklists, abastecimentos e avarias estruturados para impressão.
+- **Histórico e Relatórios Mensais**: Repositório centralizado de relatórios salvos e geração automática pelo sistema ao final de cada mês, garantindo backup histórico da operação sem esforço manual.
+- **Gestão de Perfil Segura**: Motoristas e Supervisores possuem áreas de perfis próprios com controle de foto (Uploads para cloud storage), alteração de senha e configuração de WhatsApp para alertas críticos.
+- **Sistema de Versionamento Integrado**: O sistema exibe o número de versão `v1.0.x` e o hash do commit diretamente na interface (Login e Sidebar), garantindo transparência sobre as atualizações em produção.
+- **Checklist Diário Passo a Passo**: UX moderna através de sub-formulários onde os motoristas atestam a saúde diária do carro de maneira fluida pelo celular ou desktop.
+- **Relatos Multimídia de Avarias**: Registro rápido detalhando prioridades de manutenção (Baixa, Média, Alta) com upload de provas visuais para auditoria.
 - **💡 [SISTEMA PIONEIRO] Alerta Recorrente de Negligência**: Para que nenhum supervisor esqueça resoluções vitais no pátio:
   - **Prioridade Alta**: Relembra a pendência a cada **1 Dia**.
   - **Prioridade Média**: Relembra a pendência a cada **4 Dias**.
   - **Prioridade Baixa**: Relembra a pendência a cada **7 Dias**.
-  *(Possui motor lógico de "Elapsed Time", cobrando a manutenção retroativamente mesmo se o sistema e computadores da empresa passarem dias desligados no servidor ou durante a falta de um funcionário)*
-- **Disparo Expresso WhatsApp (wa.me)**: Com 1 clique em qualquer alerta pipocando na tela, os dados estruturados da avaria e do veículo pulam gerando uma conversa nativa do WhatsApp (desktop ou mobile) encaminhada imediatamente.
-- **Integração Edge-Webhooks Backend Pronta**: Arquitetura conta com a rotina `send-whatsapp-alert` instalada remotamente em Edge Functions Deno/Supabase, perfeita para espetar provedores SaaS Z-API ou Evolution API e não necessitar sequer desse único 1 clique manual no futuro.
-- **Sincronia Global (Sockets)**: Os componentes gráficos não requerem botão de `Atualizar/F5`. Graças à assinatura `supabase.channel()`, inserts feitos no pátio com o celular acendem telas gráficas no escritório automaticamente.
+- **Sincronia Global (Sockets)**: Componentes 100% reativos que dispensam o uso de `F5`. Graças à tecnologia `Realtime Subscriptions`, os dados inseridos no pátio atualizam as telas do escritório instantaneamente.
 
 ---
 

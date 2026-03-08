@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { Login } from './lib/Login';
 import { Layout } from './lib/Layout';
@@ -14,6 +14,14 @@ const AppContent: React.FC = () => {
   const { user, profile, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedDriverVehicle, setSelectedDriverVehicle] = useState<string | undefined>();
+
+  // Ensure user always starts on the dashboard after logging in
+  useEffect(() => {
+    if (user && profile) {
+      setActiveTab('dashboard');
+      setSelectedDriverVehicle(undefined);
+    }
+  }, [user?.id, profile?.id]);
 
   if (loading) {
     return (

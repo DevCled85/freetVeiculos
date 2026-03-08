@@ -643,8 +643,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </button>
             )}
             {/* Buttons for Driver */}
-            {!isSupervisor && !isResolved && (
-              <button onClick={() => setDeleteChecklistId(cl.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors" title="Deletar checklist"><Trash2 size={14} /></button>
+            {(profile?.role === 'supervisor' || cl.driver_id === profile?.id) && !isResolved && (
+              <button
+                onClick={() => setDeleteChecklistId(cl.id)}
+                className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm ml-2"
+                title="Excluir checklist"
+              >
+                <Trash2 size={18} className="shrink-0" />
+              </button>
             )}
 
             <button onClick={() => setExpandedChecklist(expanded ? null : cl.id)} className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
@@ -924,12 +930,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
           <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-slate-800/20">
             <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl"><CheckCircle2 size={18} /></div>
-            <h3 className="text-base font-bold text-white">Histórico Resolvido</h3>
+            <h3 className="text-base font-bold text-white">Checklists Histórico Resolvido</h3>
             <span className="ml-auto text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">{resolvedChecklists.length}</span>
           </div>
           <div className="p-4 space-y-3 max-h-80 overflow-y-auto scrollbar-dark">
             {resolvedChecklists.length === 0
-              ? <div className="text-center py-6 text-slate-500 text-sm">Nenhum histórico resolvido ainda.</div>
+              ? <div className="text-center py-6 text-slate-500 text-sm">Nenhum histórico de cheklists resolvido ainda.</div>
               : resolvedChecklists.map(cl => renderChecklistCard(cl, true))}
           </div>
         </div>
