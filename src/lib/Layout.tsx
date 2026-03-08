@@ -298,7 +298,10 @@ export const Layout: React.FC<{
           <div className="w-9 h-9 bg-slate-800 rounded-lg shadow-sm border border-slate-700 p-0.5 overflow-hidden flex items-center justify-center shrink-0">
             <img src={logoVidronox} alt="Vidronox Logo" className="w-full h-full object-contain mix-blend-screen" />
           </div>
-          <span className="font-extrabold text-lg text-white tracking-tight">FleetCheck</span>
+          <div className="flex flex-col">
+            <span className="font-extrabold text-lg text-white tracking-tight leading-tight">FleetCheck</span>
+            {version && <span className="text-[8px] font-bold text-primary-500/80 uppercase tracking-widest -mt-0.5">v1.0.{version.version_number}</span>}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -425,6 +428,15 @@ export const Layout: React.FC<{
                   <LogOut size={24} />
                   Sair
                 </button>
+
+                {version && (
+                  <div className="mt-6 px-6 pt-6 border-t border-slate-800/30 flex flex-col gap-0.5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Versão do Sistema</p>
+                    <p className="text-[10px] font-mono text-slate-600 truncate" title={version.commit_hash}>
+                      Build v1.0.{version.version_number} • {version.commit_hash.substring(0, 7)}
+                    </p>
+                  </div>
+                )}
               </div>
             </nav>
           </motion.div>

@@ -218,13 +218,13 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                             <h2 className="text-xl font-bold text-slate-800 mb-4 border-l-4 border-primary-500 pl-3">Consumo por Veículo</h2>
                             <div className="overflow-x-auto rounded-xl border border-slate-200">
                                 <table className="w-full table-fixed text-left text-sm whitespace-nowrap">
-                                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[9px] sm:text-[10px] tracking-widest leading-none sm:leading-tight">
+                                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[8px] sm:text-[9px] tracking-widest leading-none sm:leading-tight">
                                         <tr>
                                             <th className="px-1.5 sm:px-4 py-2 sm:py-3 w-[26%] sm:w-[35%] align-bottom break-words whitespace-normal">Veículo</th>
-                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right w-[17%] align-bottom break-words whitespace-normal">Km Rodado</th>
-                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right w-[18%] align-bottom break-words whitespace-normal">Litros Cons.</th>
-                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center w-[18%] align-bottom break-words whitespace-normal">Média (km/L)</th>
-                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-right w-[21%] align-bottom break-words whitespace-normal">Custo Total</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right w-[17%] align-bottom break-words whitespace-normal font-bold">Km Rodado</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right w-[18%] align-bottom break-words whitespace-normal font-bold">Litros Cons.</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center w-[18%] align-bottom break-words whitespace-normal font-bold">Média (km/L)</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-right w-[21%] align-bottom break-words whitespace-normal font-bold">Custo Total</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -234,11 +234,11 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                             const vLogs = data.fuelLogs.filter((log: any) => log.vehicle_id === v.id);
                                             return (
                                                 <React.Fragment key={v.id}>
-                                                    <tr className="hover:bg-slate-50 bg-slate-50/50 text-[10px] sm:text-sm">
+                                                    <tr className="hover:bg-slate-50 bg-slate-50/50 text-[9px] sm:text-[12px]">
                                                         <td className="px-1.5 sm:px-4 py-2 sm:py-3 font-bold text-slate-800 capitalize whitespace-normal break-words align-middle overflow-hidden text-ellipsis">
                                                             <span className="hidden sm:inline">{v.model.toLowerCase()} - </span>
                                                             <span>{v.plate}</span>
-                                                            <div className="text-slate-500 font-normal mt-0.5 sm:mt-0 sm:inline sm:ml-1 text-[9px] sm:text-sm leading-none sm:leading-normal">({v.color || '-'})</div>
+                                                            <div className="text-slate-500 font-normal mt-0.5 sm:mt-0 sm:inline sm:ml-1 text-[8px] sm:text-[11px] leading-none sm:leading-normal">({v.color || '-'})</div>
                                                         </td>
                                                         <td className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right text-slate-600 font-medium whitespace-nowrap align-middle">{m.kmTraveled > 0 ? m.kmTraveled.toLocaleString() : '-'}</td>
                                                         <td className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right text-slate-600 font-medium whitespace-nowrap align-middle">{m.liters.toFixed(1)}</td>
@@ -310,18 +310,24 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                             ) : (
                                 <div className="overflow-x-auto rounded-xl border border-slate-200">
                                     <table className="w-full table-fixed text-left whitespace-nowrap">
-                                        <colgroup>
-                                            <col className="w-[90px]" />
+                                        <colgroup className="print:hidden">
+                                            <col className="w-[110px]" />
+                                            <col />
+                                            <col className="w-[80px]" />
+                                            <col className="w-[95px]" />
+                                        </colgroup>
+                                        <colgroup className="hidden print:table-column-group">
+                                            <col className="w-[100px]" />
                                             <col className="w-[90px]" />
                                             <col />
-                                            <col className="w-[60px]" />
-                                            <col className="w-[75px]" />
+                                            <col className="w-[70px]" />
+                                            <col className="w-[85px]" />
                                         </colgroup>
                                         <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[9px] tracking-widest">
                                             <tr>
                                                 <th className="px-2 py-2">Data</th>
                                                 <th className="px-2 py-2">Veículo</th>
-                                                <th className="px-2 py-2">Descrição</th>
+                                                <th className="px-2 py-2 hidden print:table-cell">Descrição</th>
                                                 <th className="px-2 py-2">Prior.</th>
                                                 <th className="px-2 py-2">Status</th>
                                             </tr>
@@ -332,26 +338,37 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                                 if (a.status !== 'pending' && b.status === 'pending') return 1;
                                                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
                                             }).slice(0, 20).map(d => (
-                                                <tr key={d.id} className="hover:bg-slate-50">
-                                                    <td className="px-2 py-2 text-[10px] text-slate-600 font-medium">
-                                                        {new Date(d.created_at).toLocaleDateString('pt-BR')} <span className="text-slate-400 block">{new Date(d.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                                                    </td>
-                                                    <td className="px-2 py-2 text-[10px] font-bold text-slate-800">
-                                                        {(d as any).vehicles?.plate || '-'}
-                                                        {(d as any).vehicles?.color && <span className="text-[9px] text-slate-500 font-normal block">{(d as any).vehicles.color}</span>}
-                                                    </td>
-                                                    <td className="px-2 py-2 text-[10px] text-slate-700 whitespace-normal">{d.description}</td>
-                                                    <td className="px-2 py-2">
-                                                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${d.priority === 'high' ? 'bg-red-100 text-red-700' : d.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                            {d.priority === 'high' ? 'Alta' : d.priority === 'medium' ? 'Média' : 'Baixa'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-2 py-2">
-                                                        {d.status === 'pending'
-                                                            ? <span className="text-red-500 font-bold text-[9px] uppercase">Pendente</span>
-                                                            : <span className="text-emerald-500 font-bold text-[9px] uppercase">Resolvido ✅</span>}
-                                                    </td>
-                                                </tr>
+                                                <React.Fragment key={d.id}>
+                                                    <tr className="hover:bg-slate-50 border-b border-slate-100 print:border-b-0">
+                                                        <td className="px-2 py-2 text-[10px] text-slate-600 font-medium whitespace-nowrap">
+                                                            {new Date(d.created_at).toLocaleDateString('pt-BR')} <span className="text-slate-400 block sm:inline sm:ml-1 print:block print:ml-0">{new Date(d.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        </td>
+                                                        <td className="px-2 py-2 text-[10px] font-bold text-slate-800">
+                                                            {(d as any).vehicles?.plate || '-'}
+                                                            {(d as any).vehicles?.color && <span className="text-[9px] text-slate-500 font-normal block">{(d as any).vehicles.color}</span>}
+                                                        </td>
+                                                        <td className="px-2 py-2 text-[10px] text-slate-700 whitespace-normal hidden print:table-cell">{d.description}</td>
+                                                        <td className="px-2 py-2">
+                                                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${d.priority === 'high' ? 'bg-red-100 text-red-700' : d.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                                {d.priority === 'high' ? 'Alta' : d.priority === 'medium' ? 'Média' : 'Baixa'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            {d.status === 'pending'
+                                                                ? <span className="text-red-500 font-bold text-[9px] uppercase">Pendente</span>
+                                                                : <span className="text-emerald-500 font-bold text-[9px] uppercase">Resolvido ✅</span>}
+                                                        </td>
+                                                    </tr>
+                                                    {/* Description row only for Screen view */}
+                                                    <tr className="print:hidden border-b border-slate-100 bg-slate-50/20">
+                                                        <td colSpan={4} className="px-2 py-1.5 text-[10px] text-slate-700">
+                                                            <div className="flex gap-2">
+                                                                <span className="font-bold text-slate-400 uppercase text-[8px] tracking-widest mt-0.5">Descrição:</span>
+                                                                <span className="flex-1 italic">{d.description}</span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </React.Fragment>
                                             ))}
                                         </tbody>
                                     </table>
@@ -370,10 +387,15 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                             ) : (
                                 <div className="overflow-x-auto rounded-xl border border-slate-200">
                                     <table className="w-full table-fixed text-left whitespace-nowrap">
-                                        <colgroup>
-                                            <col className="w-[90px]" />
-                                            <col className="w-[90px]" />
-                                            <col className="w-[90px]" />
+                                        <colgroup className="print:hidden">
+                                            <col className="w-[120px]" />
+                                            <col className="w-[130px]" />
+                                            <col />
+                                        </colgroup>
+                                        <colgroup className="hidden print:table-column-group">
+                                            <col className="w-[110px]" />
+                                            <col className="w-[95px]" />
+                                            <col className="w-[95px]" />
                                             <col />
                                         </colgroup>
                                         <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[9px] tracking-widest">
@@ -381,7 +403,7 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                                 <th className="px-2 py-2">Data e Hora</th>
                                                 <th className="px-2 py-2">Veículo</th>
                                                 <th className="px-2 py-2">Motorista</th>
-                                                <th className="px-2 py-2">Status & Pendências</th>
+                                                <th className="px-2 py-2 hidden print:table-cell">Status & Pendências</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -394,38 +416,61 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                                 const badItems = (c.checklist_items || []).filter((i: any) => !i.is_ok);
 
                                                 return (
-                                                    <tr key={c.id} className="hover:bg-slate-50">
-                                                        <td className="px-2 py-2 text-[10px] text-slate-600 font-medium align-top">
-                                                            {new Date(c.created_at).toLocaleDateString('pt-BR')} <br />
-                                                            <span className="text-[9px] text-slate-400">{new Date(c.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                                                        </td>
-                                                        <td className="px-2 py-2 text-[10px] font-bold text-slate-800 align-top">
-                                                            {c.vehicles?.plate || '-'}
-                                                            {c.vehicles?.color && <span className="text-[9px] text-slate-500 font-normal block">{c.vehicles.color}</span>}
-                                                        </td>
-                                                        <td className="px-2 py-2 text-[10px] text-slate-700 align-top whitespace-normal">{driver}</td>
-                                                        <td className="px-2 py-2 align-top whitespace-normal">
-                                                            {c.status === 'resolved' ? (
-                                                                <div>
-                                                                    <span className="text-emerald-500 font-bold text-[10px] flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Concluído / OK</span>
-                                                                    <p className="text-[9px] text-slate-500 mt-1">Todos os itens conferidos e resolvidos.</p>
+                                                    <React.Fragment key={c.id}>
+                                                        {/* Main Row: Visible in both, but status hidden on screen */}
+                                                        <tr className="hover:bg-slate-50 border-b border-slate-100 print:border-b-0">
+                                                            <td className="px-2 py-2 text-[10px] text-slate-600 font-medium align-top">
+                                                                {new Date(c.created_at).toLocaleDateString('pt-BR')} <br />
+                                                                <span className="text-[9px] text-slate-400">{new Date(c.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            </td>
+                                                            <td className="px-2 py-2 text-[10px] font-bold text-slate-800 align-top">
+                                                                {c.vehicles?.plate || '-'}
+                                                                {c.vehicles?.color && <span className="text-[9px] text-slate-500 font-normal block">{c.vehicles.color}</span>}
+                                                            </td>
+                                                            <td className="px-2 py-2 text-[10px] text-slate-700 align-top whitespace-normal">{driver}</td>
+                                                            <td className="px-2 py-2 align-top whitespace-normal hidden print:table-cell">
+                                                                {c.status === 'resolved' ? (
+                                                                    <span className="text-emerald-500 font-bold text-[10px] leading-tight">Resolvido ✅</span>
+                                                                ) : (
+                                                                    <span className="text-red-500 font-bold text-[10px] leading-tight flex flex-col gap-0.5">
+                                                                        <span>Pendente</span>
+                                                                        {badItems.map((bi: any) => (
+                                                                            <span key={bi.id} className="text-[8px] font-normal italic opacity-80 leading-none">-{bi.item_name}</span>
+                                                                        ))}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                        {/* Status row only for Screen view */}
+                                                        <tr className="print:hidden border-b border-slate-100 bg-slate-50/20">
+                                                            <td colSpan={3} className="px-2 py-1.5 align-top">
+                                                                <div className="flex gap-2 items-start">
+                                                                    <span className="font-bold text-slate-400 uppercase text-[8px] tracking-widest mt-0.5 shrink-0">Status:</span>
+                                                                    <div className="flex-1">
+                                                                        {c.status === 'resolved' ? (
+                                                                            <div>
+                                                                                <span className="text-emerald-500 font-bold text-[10px] flex items-center gap-1 leading-none"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Concluído / OK</span>
+                                                                                <p className="text-[9px] text-slate-500 mt-0.5 italic">Todos os itens conferidos e resolvidos.</p>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div>
+                                                                                <span className="text-red-500 font-bold text-[10px] flex items-center gap-1 leading-none"><span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Com Pendências</span>
+                                                                                {badItems.length > 0 && (
+                                                                                    <ul className="mt-1 space-y-0.5">
+                                                                                        {badItems.map((bi: any) => (
+                                                                                            <li key={bi.id} className="text-[9px] text-slate-600 bg-red-50 p-1 rounded border border-red-100 flex gap-1">
+                                                                                                <span className="font-bold shrink-0">{bi.item_name}:</span> <span className="italic">{bi.notes || 'Sem observação'}</span>
+                                                                                            </li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                            ) : (
-                                                                <div>
-                                                                    <span className="text-red-500 font-bold text-[10px] flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Com Pendências</span>
-                                                                    {badItems.length > 0 && (
-                                                                        <ul className="mt-1 space-y-0.5">
-                                                                            {badItems.map((bi: any) => (
-                                                                                <li key={bi.id} className="text-[9px] text-slate-600 bg-red-50 p-1 rounded border border-red-100">
-                                                                                    <span className="font-bold">{bi.item_name}:</span> {bi.notes || 'Sem observação'}
-                                                                                </li>
-                                                                            ))}
-                                                                        </ul>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </td>
-                                                    </tr>
+                                                            </td>
+                                                        </tr>
+                                                    </React.Fragment>
                                                 );
                                             })}
                                         </tbody>
