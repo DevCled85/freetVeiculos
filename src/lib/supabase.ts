@@ -87,3 +87,15 @@ export type AppVersion = {
   commit_message: string;
   created_at: string;
 };
+
+export type AuditLog = {
+  id: string;
+  user_id?: string;
+  user_email?: string;
+  action: 'INSERT' | 'UPDATE' | 'DELETE';
+  table_name: string;
+  record_id: string;
+  old_data?: any;
+  new_data?: any;
+  created_at: string;
+};

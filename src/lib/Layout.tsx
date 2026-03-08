@@ -15,7 +15,8 @@ import {
   Upload,
   Pencil,
   Eye,
-  EyeOff
+  EyeOff,
+  History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, Notification, AppVersion } from './supabase';
@@ -53,6 +54,7 @@ const navItems: NavItem[] = [
   { id: 'damages', label: 'Avarias', icon: AlertTriangle, roles: ['driver', 'supervisor'] },
   { id: 'fuel', label: 'Abastecimento', icon: Fuel, roles: ['driver', 'supervisor'] },
   { id: 'reports', label: 'Relatórios', icon: FileText, roles: ['supervisor'] },
+  { id: 'audit', label: 'Auditoria', icon: History, roles: ['supervisor'] },
 ];
 
 export const Layout: React.FC<{
