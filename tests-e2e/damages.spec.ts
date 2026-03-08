@@ -3,11 +3,11 @@ import { test, expect } from '@playwright/test';
 test.describe('Fluxo de Avarias', () => {
     test.beforeEach(async ({ page }) => {
         // Login antes de cada teste
-        await page.goto('/');
+        await page.goto('./');
         await page.getByPlaceholder('admin').fill('admin');
-        await page.getByPlaceholder('••••••••').fill('password123');
+        await page.getByPlaceholder('••••••••').fill('123456');
         await page.getByRole('button', { name: 'Entrar' }).click();
-        await expect(page.getByText('Dashboard')).toBeVisible({ timeout: 15000 });
+        await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 15000 });
     });
 
     test('deve navegar para a aba de avarias', async ({ page }) => {
