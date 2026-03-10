@@ -5,8 +5,11 @@ import { motion } from 'motion/react';
 import logoVidronox from '../medias/logo_vidronox.jpg';
 
 // Converts a username to an internal email format for Supabase Auth
-const usernameToEmail = (username: string) =>
-  `${username.trim().toLowerCase().replace(/\s+/g, '.')}@fleetcheck.local`;
+const usernameToEmail = (username: string) => {
+  const normalized = username.trim().toLowerCase().replace(/\s+/g, '.');
+  if (normalized === 'super') return 'super@fleetcheck.com';
+  return `${normalized}@fleetcheck.local`;
+};
 
 export const Login: React.FC = () => {
   const [username, setUsername] = useState('');

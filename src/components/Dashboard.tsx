@@ -127,7 +127,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const fetchUsers = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     const { data } = await supabase.from('profiles').select('*').order('created_at');
-    setUsers(data || []);
+    const filtered = (data || []).filter(u => u.full_name !== 'Desenvolvedor (Super)' && u.username !== 'super');
+    setUsers(filtered);
   }, []);
 
   const fetchChecklists = useCallback(async (driverId?: string) => {
@@ -137,7 +138,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       .order('created_at', { ascending: false });
     if (driverId) q = q.eq('driver_id', driverId);
     const { data } = await q.limit(20);
-    setChecklists(data || []);
+    const filteredData = (data || []).filter((c: any) => c.profiles?.full_name !== 'Desenvolvedor (Super)' && c.profiles?.username !== 'super');
+    setChecklists(filteredData as any);
   }, []);
 
   const fetchMyDamages = useCallback(async (driverId?: string) => {
@@ -161,7 +163,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       .limit(30);
     if (driverId) q = q.eq('reported_by', driverId);
     const { data } = await q;
-    if (data) setResolvedDamages(data as any);
+    if (data) {
+      const filteredData = data.filter((d: any) => d.reporter?.full_name !== 'Desenvolvedor (Super)' && d.reporter?.username !== 'super');
+      setResolvedDamages(filteredData as any);
+    }
   }, []);
 
   const fetchLatestMonthly = useCallback(async () => {

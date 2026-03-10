@@ -95,7 +95,8 @@ export const FuelListSupervisor: React.FC = () => {
             .order('created_at', { ascending: false });
 
         if (!error && data) {
-            setLogs(data as any[]);
+            const filteredData = data.filter((log: any) => log.profiles?.full_name !== 'Desenvolvedor (Super)' && log.profiles?.username !== 'super');
+            setLogs(filteredData as any[]);
         }
         setLoading(false);
     };

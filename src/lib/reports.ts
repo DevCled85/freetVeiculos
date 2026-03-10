@@ -64,11 +64,15 @@ export const generateReportData = async (startDate?: string, endDate?: string): 
     if (fuelRes.error) throw fuelRes.error;
     if (checkRes.error) throw checkRes.error;
 
+    const rawProfiles = profRes.data || [];
+    const superUser = rawProfiles.find(p => p.full_name === 'Desenvolvedor (Super)' || p.full_name === 'super');
+    const superUserId = superUser?.id;
+
     const vehicles = vehRes.data as Vehicle[];
-    const damages = damRes.data as Damage[];
-    const fuelLogs = fuelRes.data as FuelLog[];
-    const checklists = checkRes.data || [];
-    const profiles = profRes.data || [];
+    const profiles = rawProfiles.filter(p => p.id !== superUserId);
+    const damages = superUserId ? (damRes.data as Damage[]).filter(d => d.reported_by !== superUserId) : damRes.data as Damage[];
+    const fuelLogs = superUserId ? (fuelRes.data as FuelLog[]).filter(f => f.driver_id !== superUserId) : fuelRes.data as FuelLog[];
+    const checklists = superUserId ? (checkRes.data || []).filter(c => c.driver_id !== superUserId) : checkRes.data || [];
 
     // Calculate Metrics
     let totalFuelLiters = 0;

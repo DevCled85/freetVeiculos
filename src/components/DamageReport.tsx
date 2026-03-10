@@ -94,7 +94,10 @@ export const DamageReport: React.FC = () => {
       .from('damages')
       .select('*, vehicles(brand, model, plate), profiles!reported_by(full_name)')
       .order('created_at', { ascending: false });
-    if (data) setDamages(data as any);
+    if (data) {
+      const filteredData = data.filter((d: any) => d.profiles?.full_name !== 'Desenvolvedor (Super)');
+      setDamages(filteredData as any);
+    }
   };
 
   const fetchVehicles = async () => {
