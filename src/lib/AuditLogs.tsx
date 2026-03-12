@@ -40,8 +40,7 @@ export const AuditLogs: React.FC = () => {
         if (error) {
             console.error('Error fetching logs:', error);
         } else {
-            const filteredData = (data || []).filter(log => log.user_email !== 'super@fleetcheck.com');
-            setLogs(filteredData);
+            setLogs(data || []);
         }
         setLoading(false);
     };

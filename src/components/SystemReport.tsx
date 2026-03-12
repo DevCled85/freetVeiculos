@@ -109,10 +109,10 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
 
 
     return (
-        <div className={preloadedData ? "animate-fade-in" : "fixed inset-0 bg-slate-100 z-[100] flex flex-col overflow-hidden print:bg-white print:z-auto print:static"}>
+        <div className={preloadedData ? "animate-fade-in" : "fixed inset-0 bg-slate-100 z-[100] flex flex-col print:bg-white print:z-auto print:static"}>
             {/* Header bar (Not printed) */}
             {!preloadedData && (
-                <div className="bg-slate-900 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 print:hidden shadow-lg border-b border-slate-800 gap-4">
+                <div className="bg-slate-900 px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 print:hidden shadow-lg border-b border-slate-800 gap-2 sm:gap-4">
                     <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-3">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-primary-500/20 text-primary-400 rounded-lg shrink-0">
@@ -156,8 +156,8 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                     <p className="text-slate-500 font-medium">Buscando informações gerais da frota...</p>
                 </div>
             ) : data ? (
-                <div className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-8 print:p-0 bg-slate-100 print:bg-white text-slate-800 scrollbar-dark" id="printable-report">
-                    <div className="max-w-5xl mx-auto bg-white print:shadow-none shadow-sm sm:shadow-2xl print:border-0 border border-slate-200 rounded-xl sm:rounded-2xl p-4 sm:p-8 md:p-12 print:p-0">
+                <div className="flex-1 overflow-y-auto p-1.5 sm:p-4 md:p-8 print:p-0 bg-slate-100 print:bg-white text-slate-800 scrollbar-dark" id="printable-report">
+                    <div className="max-w-5xl mx-auto bg-white print:shadow-none shadow-sm sm:shadow-2xl print:border-0 border border-slate-200 rounded-lg sm:rounded-2xl p-3 sm:p-8 md:p-12 print:p-0">
                         {/* Report Header */}
                         <div className="border-b-2 border-slate-200 pb-5 mb-8 flex flex-row items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
@@ -217,14 +217,14 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                         <section className="mb-10 page-break-inside-avoid">
                             <h2 className="text-xl font-bold text-slate-800 mb-4 border-l-4 border-primary-500 pl-3">Consumo por Veículo</h2>
                             <div className="overflow-x-auto rounded-xl border border-slate-200">
-                                <table className="w-full table-fixed text-left text-sm whitespace-nowrap">
+                                <table className="w-full sm:table-fixed text-left text-sm">
                                     <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[8px] sm:text-[9px] tracking-widest leading-none sm:leading-tight">
                                         <tr>
-                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 w-[26%] sm:w-[35%] align-bottom break-words whitespace-normal">Veículo</th>
-                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right w-[17%] align-bottom break-words whitespace-normal font-bold">Km Rodado</th>
-                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right w-[18%] align-bottom break-words whitespace-normal font-bold">Litros Cons.</th>
-                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center w-[18%] align-bottom break-words whitespace-normal font-bold">Média (km/L)</th>
-                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-right w-[21%] align-bottom break-words whitespace-normal font-bold">Custo Total</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 w-[28%] sm:w-[35%] align-bottom break-words whitespace-normal">Veículo</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right w-[16%] align-bottom break-words whitespace-normal font-bold">Km</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center sm:text-right w-[16%] align-bottom break-words whitespace-normal font-bold">Lts</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-center w-[18%] align-bottom break-words whitespace-normal font-bold">Média</th>
+                                            <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-right w-[22%] align-bottom break-words whitespace-normal font-bold">Total</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -308,13 +308,12 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                             {data.damages.length === 0 ? (
                                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm text-slate-500">Nenhuma avaria registrada no sistema.</div>
                             ) : (
-                                <div className="overflow-x-auto rounded-xl border border-slate-200">
-                                    <table className="w-full table-fixed text-left whitespace-nowrap">
+                                <div className="rounded-xl border border-slate-200">
+                                    <table className="w-full sm:table-fixed text-left">
                                         <colgroup className="print:hidden">
-                                            <col className="w-[110px]" />
+                                            <col className="w-[80px] sm:w-[110px]" />
                                             <col />
-                                            <col className="w-[80px]" />
-                                            <col className="w-[95px]" />
+                                            <col className="w-[100px] sm:w-[180px]" />
                                         </colgroup>
                                         <colgroup className="hidden print:table-column-group">
                                             <col className="w-[100px]" />
@@ -323,13 +322,12 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                             <col className="w-[70px]" />
                                             <col className="w-[85px]" />
                                         </colgroup>
-                                        <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[9px] tracking-widest">
+                                        <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[8px] sm:text-[9px] tracking-widest leading-none">
                                             <tr>
-                                                <th className="px-2 py-2">Data</th>
-                                                <th className="px-2 py-2">Veículo</th>
-                                                <th className="px-2 py-2 hidden print:table-cell">Descrição</th>
-                                                <th className="px-2 py-2">Prior.</th>
-                                                <th className="px-2 py-2">Status</th>
+                                                <th className="px-1.5 sm:px-2 py-2">Data</th>
+                                                <th className="px-1.5 sm:px-2 py-2">Placa</th>
+                                                <th className="px-1.5 sm:px-2 py-2 hidden print:table-cell w-[100px]">Descrição</th>
+                                                <th className="px-1.5 sm:px-2 py-2 text-right">Prior. / Status</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -340,23 +338,23 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                             }).slice(0, 20).map(d => (
                                                 <React.Fragment key={d.id}>
                                                     <tr className="hover:bg-slate-50 border-b border-slate-100 print:border-b-0">
-                                                        <td className="px-2 py-2 text-[10px] text-slate-600 font-medium whitespace-nowrap">
-                                                            {new Date(d.created_at).toLocaleDateString('pt-BR')} <span className="text-slate-400 block sm:inline sm:ml-1 print:block print:ml-0">{new Date(d.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        <td className="px-1.5 sm:px-2 py-2 text-[10px] text-slate-600 font-medium leading-tight">
+                                                            {new Date(d.created_at).toLocaleDateString('pt-BR')} <span className="text-slate-400 block text-[8px] sm:text-[9px] mt-0.5">{new Date(d.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                                                         </td>
-                                                        <td className="px-2 py-2 text-[10px] font-bold text-slate-800">
+                                                        <td className="px-1.5 sm:px-2 py-2 text-[10px] font-bold text-slate-800 align-top">
                                                             {(d as any).vehicles?.plate || '-'}
                                                             {(d as any).vehicles?.color && <span className="text-[9px] text-slate-500 font-normal block">{(d as any).vehicles.color}</span>}
                                                         </td>
-                                                        <td className="px-2 py-2 text-[10px] text-slate-700 whitespace-normal hidden print:table-cell">{d.description}</td>
-                                                        <td className="px-2 py-2">
-                                                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${d.priority === 'high' ? 'bg-red-100 text-red-700' : d.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                                {d.priority === 'high' ? 'Alta' : d.priority === 'medium' ? 'Média' : 'Baixa'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            {d.status === 'pending'
-                                                                ? <span className="text-red-500 font-bold text-[9px] uppercase">Pendente</span>
-                                                                : <span className="text-emerald-500 font-bold text-[9px] uppercase">Resolvido ✅</span>}
+                                                        <td className="px-1.5 sm:px-2 py-2 text-[10px] text-slate-700 whitespace-normal hidden print:table-cell">{d.description}</td>
+                                                        <td className="px-1.5 sm:px-2 py-2 text-right align-top">
+                                                            <div className="flex flex-col items-end gap-1">
+                                                                <span className={`px-1 py-0.5 rounded-full text-[8px] sm:text-[9px] font-bold uppercase ${d.priority === 'high' ? 'bg-red-100 text-red-700' : d.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                                    {d.priority === 'high' ? 'Alta' : d.priority === 'medium' ? 'Média' : 'Baixa'}
+                                                                </span>
+                                                                {d.status === 'pending'
+                                                                    ? <span className="text-red-500 font-bold text-[8px] sm:text-[9px] uppercase leading-none">Pendente</span>
+                                                                    : <span className="text-emerald-500 font-bold text-[8px] sm:text-[9px] uppercase leading-none">Resolvido</span>}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                     {/* Description row only for Screen view */}
@@ -385,12 +383,12 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                             {data.checklists.length === 0 ? (
                                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm text-slate-500">Nenhum checklist registrado.</div>
                             ) : (
-                                <div className="overflow-x-auto rounded-xl border border-slate-200">
-                                    <table className="w-full table-fixed text-left whitespace-nowrap">
+                                <div className="rounded-xl border border-slate-200">
+                                    <table className="w-full sm:table-fixed text-left">
                                         <colgroup className="print:hidden">
-                                            <col className="w-[120px]" />
-                                            <col className="w-[130px]" />
+                                            <col className="w-[80px] sm:w-[120px]" />
                                             <col />
+                                            <col className="w-[80px] sm:w-[140px]" />
                                         </colgroup>
                                         <colgroup className="hidden print:table-column-group">
                                             <col className="w-[110px]" />
@@ -398,12 +396,11 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                             <col className="w-[95px]" />
                                             <col />
                                         </colgroup>
-                                        <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[9px] tracking-widest">
+                                        <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[8px] sm:text-[9px] tracking-widest leading-none">
                                             <tr>
-                                                <th className="px-2 py-2">Data e Hora</th>
-                                                <th className="px-2 py-2">Veículo</th>
-                                                <th className="px-2 py-2">Motorista</th>
-                                                <th className="px-2 py-2 hidden print:table-cell">Status & Pendências</th>
+                                                <th className="px-1.5 sm:px-2 py-2">Data</th>
+                                                <th className="px-1.5 sm:px-2 py-2">Veículo / Driver</th>
+                                                <th className="px-1.5 sm:px-2 py-2 text-right">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -419,25 +416,21 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                                     <React.Fragment key={c.id}>
                                                         {/* Main Row: Visible in both, but status hidden on screen */}
                                                         <tr className="hover:bg-slate-50 border-b border-slate-100 print:border-b-0">
-                                                            <td className="px-2 py-2 text-[10px] text-slate-600 font-medium align-top">
+                                                            <td className="px-1.5 sm:px-2 py-2 text-[10px] text-slate-600 font-medium align-top leading-tight">
                                                                 {new Date(c.created_at).toLocaleDateString('pt-BR')} <br />
-                                                                <span className="text-[9px] text-slate-400">{new Date(c.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                <span className="text-[8px] sm:text-[9px] text-slate-400">{new Date(c.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                                                             </td>
-                                                            <td className="px-2 py-2 text-[10px] font-bold text-slate-800 align-top">
-                                                                {c.vehicles?.plate || '-'}
-                                                                {c.vehicles?.color && <span className="text-[9px] text-slate-500 font-normal block">{c.vehicles.color}</span>}
+                                                            <td className="px-1.5 sm:px-2 py-2 text-[10px] align-top leading-tight">
+                                                                <div className="font-bold text-slate-800">
+                                                                    {c.vehicles?.plate || '-'}
+                                                                </div>
+                                                                <div className="text-[9px] text-slate-500 font-normal mt-0.5">{driver}</div>
                                                             </td>
-                                                            <td className="px-2 py-2 text-[10px] text-slate-700 align-top whitespace-normal">{driver}</td>
-                                                            <td className="px-2 py-2 align-top whitespace-normal hidden print:table-cell">
+                                                            <td className="px-1.5 sm:px-2 py-2 align-top text-right">
                                                                 {c.status === 'resolved' ? (
-                                                                    <span className="text-emerald-500 font-bold text-[10px] leading-tight">Resolvido ✅</span>
+                                                                    <span className="text-emerald-500 font-bold text-[9px] sm:text-[10px] leading-tight">OK</span>
                                                                 ) : (
-                                                                    <span className="text-red-500 font-bold text-[10px] leading-tight flex flex-col gap-0.5">
-                                                                        <span>Pendente</span>
-                                                                        {badItems.map((bi: any) => (
-                                                                            <span key={bi.id} className="text-[8px] font-normal italic opacity-80 leading-none">-{bi.item_name}</span>
-                                                                        ))}
-                                                                    </span>
+                                                                    <span className="text-red-500 font-bold text-[9px] sm:text-[10px] leading-tight">Pendente</span>
                                                                 )}
                                                             </td>
                                                         </tr>

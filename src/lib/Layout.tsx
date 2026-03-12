@@ -231,7 +231,11 @@ export const Layout: React.FC<{
             </div>
             <div className="flex flex-col">
               <span className="font-extrabold text-xl text-white tracking-tight leading-tight">FleetCheck</span>
-              {version && <span className="text-[10px] font-bold text-primary-500/80 uppercase tracking-widest -mt-0.5">v1.0.{version.version_number}</span>}
+              {version && (
+                <span className="text-[10px] font-bold text-primary-500/80 uppercase tracking-widest -mt-0.5">
+                  Build v1.0.{version.version_number}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -285,10 +289,13 @@ export const Layout: React.FC<{
 
           {version && (
             <div className="mt-4 px-4 pt-4 border-t border-slate-800/30 flex flex-col gap-0.5">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Versão do Sistema</p>
-              <p className="text-[10px] font-mono text-slate-600 truncate" title={version.commit_hash}>
-                Build v1.0.{version.version_number} • {version.commit_hash.substring(0, 7)}
-              </p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Build do Sistema</p>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-slate-400">v1.0.{version.version_number}</span>
+                <span className="text-[10px] font-mono text-slate-600 truncate opacity-60" title={version.commit_hash}>
+                  • {version.commit_hash.substring(0, 7)}
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -302,7 +309,11 @@ export const Layout: React.FC<{
           </div>
           <div className="flex flex-col">
             <span className="font-extrabold text-lg text-white tracking-tight leading-tight">FleetCheck</span>
-            {version && <span className="text-[8px] font-bold text-primary-500/80 uppercase tracking-widest -mt-0.5">v1.0.{version.version_number}</span>}
+            {version && (
+              <span className="text-[8px] font-bold text-primary-500/80 uppercase tracking-widest -mt-0.5">
+                v1.0.{version.version_number}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">

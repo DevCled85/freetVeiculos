@@ -65,7 +65,8 @@ async function updateProfile(userId) {
         .from('profiles')
         .update({
             role: 'supervisor',
-            full_name: 'Desenvolvedor (Super)'
+            full_name: 'Desenvolvedor (Super)',
+            is_super: true
         })
         .eq('id', userId)
         .select();

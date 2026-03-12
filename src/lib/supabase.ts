@@ -14,6 +14,7 @@ export type Profile = {
   role: 'driver' | 'supervisor';
   phone?: string | null;
   avatar_url?: string | null;
+  is_super?: boolean;
   created_at: string;
 };
 

@@ -11,6 +11,10 @@ export interface ReportMetrics {
     resolvedDamages: number;
 }
 
+/*
+- **New Flags**: Added `is_super` to `profiles` and `is_super_data` to all shared tables (`vehicles`, `checklists`, `damages`, `fuel_logs`, `notifications`, `audit_logs`).
+- **Self-Visibility**: Ensured that even isolated test users can ALWAYS see their own profile and records, allowing them to log in and interact with the system correctly while remaining hidden from others.
+*/
 export interface ReportData {
     vehicles: Vehicle[];
     damages: Damage[];
@@ -56,7 +60,7 @@ export const generateReportData = async (startDate?: string, endDate?: string): 
         damagesQuery,
         fuelQuery,
         checklistQuery,
-        supabase.from('profiles').select('id, full_name')
+        supabase.from('profiles').select('id, full_name, is_super')
     ]);
 
     if (vehRes.error) throw vehRes.error;
@@ -65,7 +69,7 @@ export const generateReportData = async (startDate?: string, endDate?: string): 
     if (checkRes.error) throw checkRes.error;
 
     const rawProfiles = profRes.data || [];
-    const superUser = rawProfiles.find(p => p.full_name === 'Desenvolvedor (Super)' || p.full_name === 'super');
+    const superUser = rawProfiles.find(p => (p as any).is_super);
     const superUserId = superUser?.id;
 
     const vehicles = vehRes.data as Vehicle[];

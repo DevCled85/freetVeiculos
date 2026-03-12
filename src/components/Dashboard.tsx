@@ -639,7 +639,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             {isResolved && <span className="text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full hidden sm:inline-block"><CheckCircle2 size={12} className="inline mr-1 mb-0.5" />Resolvido</span>}
 
             {/* Buttons for Supervisor */}
-            {isSupervisor && !isResolved && (
+            {(isSupervisor && (!isResolved || profile?.is_super)) && (
               <button onClick={() => setDeleteChecklistId(cl.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors" title="Deletar checklist permanentemente"><Trash2 size={14} /></button>
             )}
             {isSupervisor && hasIssues && !isResolved && (
