@@ -11,7 +11,9 @@ import {
   Upload,
   Car,
   X,
-  Droplets
+  Droplets,
+  History,
+  ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast, ToastContainer } from './Toast';
@@ -76,6 +78,8 @@ export const VehicleList: React.FC = () => {
   const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
   const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
   const [showOilModal, setShowOilModal] = useState<Vehicle | null>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState<Vehicle | null>(null);
+  const [vehiclesWithHistory, setVehiclesWithHistory] = useState<Set<string>>(new Set());
   const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
@@ -86,7 +90,12 @@ export const VehicleList: React.FC = () => {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
           fetchVehicles();
         })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_oil_changes' }, () => {
+          fetchHistoryExistence();
+        })
         .subscribe();
+
+      fetchHistoryExistence();
 
       return () => { supabase.removeChannel(channel); };
     }
@@ -108,6 +117,18 @@ export const VehicleList: React.FC = () => {
 
     if (data) setVehicles(data);
     setLoading(false);
+  };
+
+  const fetchHistoryExistence = async () => {
+    if (!isSupabaseConfigured) return;
+    const { data } = await supabase
+      .from('vehicle_oil_changes')
+      .select('vehicle_id');
+
+    if (data) {
+      const ids = new Set(data.map(item => item.vehicle_id));
+      setVehiclesWithHistory(ids);
+    }
   };
 
   const uploadVehiclePhoto = async (file: File): Promise<string | null> => {
@@ -298,6 +319,16 @@ export const VehicleList: React.FC = () => {
                     <p className="text-sm font-bold text-slate-200">{v.mileage.toLocaleString()} km</p>
                   </div>
                 </div>
+
+                {vehiclesWithHistory.has(v.id) && (
+                  <button
+                    onClick={() => setShowHistoryModal(v)}
+                    className="mt-4 w-full py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-xl flex items-center justify-center gap-2 text-[10px] font-bold text-amber-500 uppercase tracking-widest transition-all"
+                  >
+                    <History size={14} />
+                    Histórico de Troca de Óleo
+                  </button>
+                )}
               </div>
 
               <div className="px-6 py-4 bg-slate-800/50 border-t border-slate-800 flex items-center justify-between">
@@ -564,8 +595,21 @@ export const VehicleList: React.FC = () => {
         {showOilModal && (
           <OilChangeModal
             vehicle={showOilModal}
-            onClose={() => setShowOilModal(null)}
+            onClose={() => {
+              setShowOilModal(null);
+              fetchHistoryExistence();
+            }}
             addToast={addToast}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Oil Change History Modal */}
+      <AnimatePresence>
+        {showHistoryModal && (
+          <OilChangeHistoryModal
+            vehicle={showHistoryModal}
+            onClose={() => setShowHistoryModal(null)}
           />
         )}
       </AnimatePresence>
@@ -581,8 +625,8 @@ const OilChangeModal: React.FC<{
 }> = ({ vehicle, onClose, addToast }) => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState({
-    current_mileage: vehicle.mileage,
-    next_change_mileage: vehicle.mileage + 10000,
+    current_mileage: '' as string | number,
+    next_change_mileage: '' as string | number,
     change_date: new Date().toISOString().split('T')[0],
     next_change_date: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   });
@@ -603,10 +647,11 @@ const OilChangeModal: React.FC<{
 
     if (!error) {
       // Also update the vehicle's current mileage to match the service mileage if it's higher
-      if (data.current_mileage > vehicle.mileage) {
+      const mileageNum = parseInt(data.current_mileage.toString());
+      if (mileageNum > vehicle.mileage) {
         await supabase
           .from('vehicles')
-          .update({ mileage: data.current_mileage })
+          .update({ mileage: mileageNum })
           .eq('id', vehicle.id);
       }
 
@@ -715,6 +760,121 @@ const OilChangeModal: React.FC<{
               </button>
             </div>
           </form>
+        </div>
+      </motion.div>
+    </>
+  );
+};
+
+// --- Oil Change History Modal ---
+const OilChangeHistoryModal: React.FC<{
+  vehicle: Vehicle,
+  onClose: () => void
+}> = ({ vehicle, onClose }) => {
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const { data } = await supabase
+        .from('vehicle_oil_changes')
+        .select('*')
+        .eq('vehicle_id', vehicle.id)
+        .order('change_date', { ascending: false });
+
+      if (data) setHistory(data);
+      setLoading(false);
+    };
+
+    fetchHistory();
+  }, [vehicle.id]);
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80]"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-[90] overflow-hidden"
+      >
+        <div className="p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary-500/10 text-primary-500 rounded-lg">
+                <History size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-white">Histórico de Trocas</h3>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+              <X size={24} />
+            </button>
+          </div>
+
+          <div className="mb-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl flex justify-between items-center">
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Veículo</p>
+              <p className="text-sm font-bold text-white uppercase">{vehicle.model} ({vehicle.plate})</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Total de Trocas</p>
+              <p className="text-sm font-bold text-primary-400">{history.length}</p>
+            </div>
+          </div>
+
+          <div className="max-h-[350px] overflow-y-auto space-y-3 pr-2 scrollbar-thin">
+            {loading ? (
+              <div className="flex flex-col gap-3">
+                {[1, 2, 3].map(i => <div key={i} className="h-20 bg-slate-800 rounded-xl animate-pulse"></div>)}
+              </div>
+            ) : history.length === 0 ? (
+              <div className="text-center py-10">
+                <ClipboardList size={40} className="text-slate-700 mx-auto mb-3" />
+                <p className="text-slate-500 text-sm">Nenhum registro encontrado.</p>
+              </div>
+            ) : (
+              history.map((record) => (
+                <div key={record.id} className="p-4 bg-slate-800/30 border border-slate-800 rounded-2xl hover:border-slate-700 transition-colors">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                        Troca em: {new Date(record.change_date).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500">#{record.id.substring(0, 8)}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-900/50 p-2 rounded-lg">
+                      <p className="text-[8px] text-slate-500 uppercase font-bold tracking-widest mb-0.5">KM Registrado</p>
+                      <p className="text-xs font-bold text-slate-200">{record.current_mileage.toLocaleString()} km</p>
+                    </div>
+                    <div className="bg-slate-900/50 p-2 rounded-lg">
+                      <p className="text-[8px] text-slate-500 uppercase font-bold tracking-widest mb-0.5">Próxima Troca (KM)</p>
+                      <p className="text-xs font-bold text-amber-400">{record.next_change_mileage.toLocaleString()} km</p>
+                    </div>
+                    <div className="col-span-2 bg-slate-900/50 p-2 rounded-lg flex justify-between items-center">
+                      <p className="text-[8px] text-slate-500 uppercase font-bold tracking-widest">Próxima Troca (Data)</p>
+                      <p className="text-xs font-bold text-amber-400">{new Date(record.next_change_date).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full mt-6 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition-colors"
+          >
+            Fechar
+          </button>
         </div>
       </motion.div>
     </>
