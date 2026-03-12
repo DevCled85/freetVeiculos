@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { supabase, Vehicle, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, Vehicle, isSupabaseConfigured, OilChange } from '../lib/supabase';
+import { useAuth } from '../lib/AuthContext';
 import {
   Plus,
   Search,
@@ -13,7 +14,8 @@ import {
   X,
   Droplets,
   History,
-  ClipboardList
+  ClipboardList,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast, ToastContainer } from './Toast';
@@ -58,7 +60,71 @@ const MOCK_VEHICLES: Vehicle[] = [
   { id: '3', brand: 'Volkswagen', model: 'Gol', year: 2020, plate: 'KJH-4422', mileage: 80000, color: 'Preto', status: 'active', created_at: '' },
 ];
 
+// --- Confirmation Modal Component ---
+const ConfirmationModal: React.FC<{
+  show: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  type?: 'danger' | 'warning' | 'info';
+  loading?: boolean;
+}> = ({ show, onClose, onConfirm, title, message, confirmText = 'Confirmar', cancelText = 'Cancelar', type = 'info', loading = false }) => (
+  <AnimatePresence>
+    {show && (
+      <>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]"
+          onClick={onClose}
+        />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-[120] overflow-hidden"
+        >
+          <div className="p-8 text-center">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${type === 'danger' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
+              type === 'warning' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' :
+                'bg-primary-500/10 border-primary-500/20 text-primary-400'
+              }`}>
+              <AlertTriangle size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
+            <p className="text-slate-400 text-sm mb-6">{message}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                disabled={loading}
+                className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold rounded-xl transition-colors"
+              >
+                {cancelText}
+              </button>
+              <button
+                onClick={onConfirm}
+                disabled={loading}
+                className={`flex-1 px-4 py-2.5 text-white font-bold rounded-xl transition-colors ${type === 'danger' ? 'bg-red-600 hover:bg-red-700' :
+                  type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' :
+                    'bg-primary-600 hover:bg-primary-700'
+                  }`}
+              >
+                {loading ? 'Processando...' : confirmText}
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </>
+    )}
+  </AnimatePresence>
+);
+
 export const VehicleList: React.FC = () => {
+  const { profile } = useAuth();
   const { toasts, addToast, dismissToast } = useToast();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -320,14 +386,18 @@ export const VehicleList: React.FC = () => {
                   </div>
                 </div>
 
-                {vehiclesWithHistory.has(v.id) && (
+                {vehiclesWithHistory.has(v.id) ? (
                   <button
                     onClick={() => setShowHistoryModal(v)}
-                    className="mt-4 w-full py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-xl flex items-center justify-center gap-2 text-[10px] font-bold text-amber-500 uppercase tracking-widest transition-all"
+                    className="mt-4 w-full py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-xl flex items-center justify-center gap-2 text-[10px] font-bold text-amber-500 uppercase tracking-widest transition-all shadow-sm group/btn"
                   >
-                    <History size={14} />
+                    <History size={14} className="group-hover/btn:rotate-[-10deg] transition-transform" />
                     Histórico de Troca de Óleo
                   </button>
+                ) : (
+                  <div className="mt-4 w-full py-2 bg-slate-800/30 border border-slate-800/50 border-dashed rounded-xl flex items-center justify-center gap-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest cursor-default">
+                    Sem registro de troca de óleo
+                  </div>
                 )}
               </div>
 
@@ -597,9 +667,9 @@ export const VehicleList: React.FC = () => {
             vehicle={showOilModal}
             onClose={() => {
               setShowOilModal(null);
-              fetchHistoryExistence();
             }}
             addToast={addToast}
+            onHistoryChange={fetchHistoryExistence}
           />
         )}
       </AnimatePresence>
@@ -610,6 +680,7 @@ export const VehicleList: React.FC = () => {
           <OilChangeHistoryModal
             vehicle={showHistoryModal}
             onClose={() => setShowHistoryModal(null)}
+            onHistoryChange={fetchHistoryExistence}
           />
         )}
       </AnimatePresence>
@@ -621,46 +692,111 @@ export const VehicleList: React.FC = () => {
 const OilChangeModal: React.FC<{
   vehicle: Vehicle,
   onClose: () => void,
-  addToast: (msg: string, type: 'success' | 'error' | 'info') => void
-}> = ({ vehicle, onClose, addToast }) => {
+  addToast: (msg: string, type: 'success' | 'error' | 'info') => void,
+  editingRecord?: OilChange | null,
+  onHistoryChange?: () => void
+}> = ({ vehicle, onClose, addToast, editingRecord, onHistoryChange }) => {
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [data, setData] = useState({
-    current_mileage: '' as string | number,
-    next_change_mileage: '' as string | number,
-    change_date: new Date().toISOString().split('T')[0],
-    next_change_date: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    current_mileage: editingRecord ? editingRecord.current_mileage : '' as string | number,
+    next_change_mileage: editingRecord ? editingRecord.next_change_mileage : '' as string | number,
+    change_date: editingRecord ? editingRecord.change_date : new Date().toISOString().split('T')[0],
+    next_change_date: editingRecord ? editingRecord.next_change_date : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const mileageNum = parseInt(data.current_mileage.toString());
+    const nextMileageNum = parseInt(data.next_change_mileage.toString());
+
+    if (isNaN(mileageNum) || mileageNum < vehicle.mileage) {
+      addToast(`A quilometragem não pode ser menor que a atual do veículo (${vehicle.mileage} km).`, 'error');
+      return;
+    }
+
+    if (isNaN(nextMileageNum) || nextMileageNum <= mileageNum) {
+      addToast('A quilometragem da próxima troca deve ser maior que a atual.', 'error');
+      return;
+    }
+
+    if (editingRecord) {
+      setShowConfirm(true);
+    } else {
+      executeSave();
+    }
+  };
+
+  const executeSave = async () => {
+    const mileageNum = parseInt(data.current_mileage.toString());
+    const nextMileageNum = parseInt(data.next_change_mileage.toString());
+
     setLoading(true);
 
-    const { error } = await supabase
-      .from('vehicle_oil_changes')
-      .insert([{
-        vehicle_id: vehicle.id,
-        current_mileage: data.current_mileage,
-        next_change_mileage: data.next_change_mileage,
-        change_date: data.change_date,
-        next_change_date: data.next_change_date
-      }]);
+    if (editingRecord) {
+      const { error } = await supabase
+        .from('vehicle_oil_changes')
+        .update({
+          current_mileage: mileageNum,
+          next_change_mileage: nextMileageNum,
+          change_date: data.change_date,
+          next_change_date: data.next_change_date
+        })
+        .eq('id', editingRecord.id);
 
-    if (!error) {
-      // Also update the vehicle's current mileage to match the service mileage if it's higher
-      const mileageNum = parseInt(data.current_mileage.toString());
-      if (mileageNum > vehicle.mileage) {
-        await supabase
-          .from('vehicles')
-          .update({ mileage: mileageNum })
-          .eq('id', vehicle.id);
+      if (!error) {
+        if (mileageNum > vehicle.mileage) {
+          await supabase.from('vehicles').update({ mileage: mileageNum }).eq('id', vehicle.id);
+        }
+
+        // Notify
+        await supabase.from('notifications').insert([{
+          title: 'Troca de Óleo Atualizada',
+          message: `O registro de troca de óleo do veículo ${vehicle.plate} foi atualizado por ${profile?.full_name}.`,
+          type: 'system'
+        }]);
+
+        addToast('Troca de óleo atualizada!', 'success');
+        if (onHistoryChange) onHistoryChange();
+        onClose();
+      } else {
+        addToast('Erro ao atualizar: ' + error.message, 'error');
       }
-
-      addToast('Troca de óleo registrada com sucesso!', 'success');
-      onClose();
     } else {
-      addToast('Erro ao registrar troca de óleo: ' + error.message, 'error');
+      const { error } = await supabase
+        .from('vehicle_oil_changes')
+        .insert([{
+          vehicle_id: vehicle.id,
+          driver_id: profile?.id,
+          current_mileage: mileageNum,
+          next_change_mileage: nextMileageNum,
+          change_date: data.change_date,
+          next_change_date: data.next_change_date
+        }]);
+
+      if (!error) {
+        if (mileageNum > vehicle.mileage) {
+          await supabase.from('vehicles').update({ mileage: mileageNum }).eq('id', vehicle.id);
+        }
+
+        // Notify
+        await supabase.from('notifications').insert([{
+          title: 'Nova Troca de Óleo',
+          message: `Uma nova troca de óleo foi registrada para o veículo ${vehicle.plate} por ${profile?.full_name}.`,
+          type: 'system'
+        }]);
+
+        addToast('Troca de óleo registrada com sucesso!', 'success');
+        if (onHistoryChange) onHistoryChange();
+        onClose();
+      } else {
+        addToast('Erro ao registrar troca de óleo: ' + error.message, 'error');
+      }
     }
     setLoading(false);
+    setShowConfirm(false);
   };
 
   return (
@@ -678,13 +814,25 @@ const OilChangeModal: React.FC<{
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-[90] overflow-hidden"
       >
-        <div className="p-8">
+        {/* Background Photo Watermark */}
+        {(vehicle as any).photo_url && (
+          <div
+            className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none grayscale"
+            style={{
+              backgroundImage: `url(${(vehicle as any).photo_url})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
+          />
+        )}
+
+        <div className="p-8 relative z-10">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
                 <Droplets size={24} />
               </div>
-              <h3 className="text-xl font-bold text-white">Troca de Óleo</h3>
+              <h3 className="text-xl font-bold text-white">{editingRecord ? 'Editar Registro' : 'Troca de Óleo'}</h3>
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
               <X size={24} />
@@ -756,12 +904,23 @@ const OilChangeModal: React.FC<{
                 disabled={loading}
                 className="flex-1 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
               >
-                {loading ? 'Sincronizando...' : 'Registrar'}
+                {loading ? 'Salvando...' : editingRecord ? 'Atualizar' : 'Registrar'}
               </button>
             </div>
           </form>
         </div>
       </motion.div>
+
+      <ConfirmationModal
+        show={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={executeSave}
+        loading={loading}
+        title="Salvar Alterações?"
+        message="Deseja confirmar as alterações feitas neste registro de troca de óleo?"
+        confirmText="Salvar"
+        type="warning"
+      />
     </>
   );
 };
@@ -769,25 +928,57 @@ const OilChangeModal: React.FC<{
 // --- Oil Change History Modal ---
 const OilChangeHistoryModal: React.FC<{
   vehicle: Vehicle,
-  onClose: () => void
-}> = ({ vehicle, onClose }) => {
+  onClose: () => void,
+  onHistoryChange?: () => void
+}> = ({ vehicle, onClose, onHistoryChange }) => {
+  const { profile } = useAuth();
+  const { toasts, addToast, dismissToast } = useToast();
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingRecord, setEditingRecord] = useState<OilChange | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const fetchHistory = async () => {
+    const { data } = await supabase
+      .from('vehicle_oil_changes')
+      .select('*, profiles(full_name)')
+      .eq('vehicle_id', vehicle.id)
+      .order('change_date', { ascending: false });
+
+    if (data) setHistory(data);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchHistory = async () => {
-      const { data } = await supabase
-        .from('vehicle_oil_changes')
-        .select('*')
-        .eq('vehicle_id', vehicle.id)
-        .order('change_date', { ascending: false });
-
-      if (data) setHistory(data);
-      setLoading(false);
-    };
-
     fetchHistory();
   }, [vehicle.id]);
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+  };
+
+  const executeDelete = async () => {
+    if (!deletingId) return;
+    setDeleteLoading(true);
+    const { error } = await supabase.from('vehicle_oil_changes').delete().eq('id', deletingId);
+    if (!error) {
+      // Notify
+      await supabase.from('notifications').insert([{
+        title: 'Troca de Óleo Removida',
+        message: `Um registro de troca de óleo do veículo ${vehicle.plate} foi excluído por ${profile?.full_name}.`,
+        type: 'system'
+      }]);
+
+      addToast('Registro excluído com sucesso.', 'info');
+      fetchHistory();
+      if (onHistoryChange) onHistoryChange();
+    } else {
+      addToast('Erro ao excluir: ' + error.message, 'error');
+    }
+    setDeleteLoading(false);
+    setDeletingId(null);
+  };
 
   return (
     <>
@@ -817,12 +1008,23 @@ const OilChangeHistoryModal: React.FC<{
             </button>
           </div>
 
-          <div className="mb-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl flex justify-between items-center">
-            <div>
+          <div className="mb-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl flex justify-between items-center relative overflow-hidden">
+            {/* Background Photo Watermark */}
+            {(vehicle as any).photo_url && (
+              <div
+                className="absolute inset-0 z-0 opacity-[0.05] pointer-events-none grayscale"
+                style={{
+                  backgroundImage: `url(${(vehicle as any).photo_url})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+              />
+            )}
+            <div className="relative z-10">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Veículo</p>
               <p className="text-sm font-bold text-white uppercase">{vehicle.model} ({vehicle.plate})</p>
             </div>
-            <div className="text-right">
+            <div className="text-right relative z-10">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Total de Trocas</p>
               <p className="text-sm font-bold text-primary-400">{history.length}</p>
             </div>
@@ -840,15 +1042,32 @@ const OilChangeHistoryModal: React.FC<{
               </div>
             ) : (
               history.map((record) => (
-                <div key={record.id} className="p-4 bg-slate-800/30 border border-slate-800 rounded-2xl hover:border-slate-700 transition-colors">
+                <div key={record.id} className="p-4 bg-slate-800/30 border border-slate-800 rounded-2xl hover:border-slate-700 transition-colors group/item relative">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                        Troca em: {new Date(record.change_date).toLocaleDateString('pt-BR')}
-                      </span>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-200 uppercase tracking-tighter">
+                          Troca em: {new Date(record.change_date).toLocaleDateString('pt-BR')}
+                        </p>
+                        <p className="text-[8px] text-slate-500 font-medium">Responsável: {record.profiles?.full_name || 'Sistema'}</p>
+                      </div>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-500">#{record.id.substring(0, 8)}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setEditingRecord(record)}
+                        className="p-1.5 text-slate-500 hover:text-primary-400 opacity-0 group-hover/item:opacity-100 transition-all"
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(record.id)}
+                        className="p-1.5 text-slate-500 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-all"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                      <span className="text-[10px] font-mono text-slate-600">#{record.id.substring(0, 8)}</span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-slate-900/50 p-2 rounded-lg">
@@ -877,6 +1096,35 @@ const OilChangeHistoryModal: React.FC<{
           </button>
         </div>
       </motion.div>
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {editingRecord && (
+          <OilChangeModal
+            vehicle={vehicle}
+            editingRecord={editingRecord}
+            onClose={() => {
+              setEditingRecord(null);
+              fetchHistory();
+            }}
+            addToast={addToast}
+            onHistoryChange={onHistoryChange}
+          />
+        )}
+      </AnimatePresence>
+
+      <ConfirmationModal
+        show={!!deletingId}
+        onClose={() => setDeletingId(null)}
+        onConfirm={executeDelete}
+        loading={deleteLoading}
+        title="Excluir Registro?"
+        message="Tem certeza que deseja excluir permanentemente este registro de troca de óleo? Esta ação não pode ser desfeta."
+        confirmText="Excluir"
+        type="danger"
+      />
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </>
   );
 };

@@ -1,4 +1,4 @@
-import { supabase, Vehicle, Damage, FuelLog, Checklist, Profile } from './supabase';
+import { supabase, Vehicle, Damage, FuelLog, Checklist, Profile, OilChange } from './supabase';
 
 export interface ReportMetrics {
     totalFuelLiters: number;
@@ -20,6 +20,7 @@ export interface ReportData {
     damages: Damage[];
     fuelLogs: FuelLog[];
     checklists: Checklist[];
+    oilChanges: OilChange[];
     profiles: Pick<Profile, 'id' | 'full_name'>[];
     metrics: ReportMetrics;
     vehicleMetrics: Record<string, {
@@ -40,6 +41,7 @@ export const generateReportData = async (startDate?: string, endDate?: string): 
     let damagesQuery = supabase.from('damages').select('*, vehicles(brand, model, plate, color)');
     let fuelQuery = supabase.from('fuel_logs').select('*, vehicles(brand, model, plate, color)').order('created_at', { ascending: false });
     let checklistQuery = supabase.from('checklists').select('*, checklist_items(*), vehicles(brand, model, plate, color)').order('created_at', { ascending: false });
+    let oilQuery = supabase.from('vehicle_oil_changes').select('*, vehicles(brand, model, plate, color), profiles(full_name)').order('created_at', { ascending: false });
 
     if (startDate) {
         const start = new Date(startDate + 'T00:00:00');
@@ -55,18 +57,20 @@ export const generateReportData = async (startDate?: string, endDate?: string): 
     }
 
     // Data range: let's get everything for a global report, or filtering by dates.
-    const [vehRes, damRes, fuelRes, checkRes, profRes] = await Promise.all([
+    const [vehRes, damRes, fuelRes, checkRes, profRes, oilRes] = await Promise.all([
         supabase.from('vehicles').select('*'),
         damagesQuery,
         fuelQuery,
         checklistQuery,
-        supabase.from('profiles').select('id, full_name, is_super')
+        supabase.from('profiles').select('id, full_name, is_super'),
+        oilQuery
     ]);
 
     if (vehRes.error) throw vehRes.error;
     if (damRes.error) throw damRes.error;
     if (fuelRes.error) throw fuelRes.error;
     if (checkRes.error) throw checkRes.error;
+    if (oilRes.error) throw oilRes.error;
 
     const rawProfiles = profRes.data || [];
     const superUser = rawProfiles.find(p => (p as any).is_super);
@@ -74,9 +78,10 @@ export const generateReportData = async (startDate?: string, endDate?: string): 
 
     const vehicles = vehRes.data as Vehicle[];
     const profiles = rawProfiles.filter(p => p.id !== superUserId);
-    const damages = superUserId ? (damRes.data as Damage[]).filter(d => d.reported_by !== superUserId) : damRes.data as Damage[];
-    const fuelLogs = superUserId ? (fuelRes.data as FuelLog[]).filter(f => f.driver_id !== superUserId) : fuelRes.data as FuelLog[];
-    const checklists = superUserId ? (checkRes.data || []).filter(c => c.driver_id !== superUserId) : checkRes.data || [];
+    const damages = (damRes.data || []) as Damage[];
+    const fuelLogs = (fuelRes.data || []) as FuelLog[];
+    const checklists = (checkRes.data || []) as Checklist[];
+    const oilChanges = (oilRes.data || []) as OilChange[];
 
     // Calculate Metrics
     let totalFuelLiters = 0;
@@ -129,6 +134,7 @@ export const generateReportData = async (startDate?: string, endDate?: string): 
         damages,
         fuelLogs,
         checklists,
+        oilChanges,
         profiles,
         metrics: {
             totalFuelLiters,

@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../lib/AuthContext';
-import { supabase, Vehicle, Damage, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, Vehicle, Damage, isSupabaseConfigured, OilChange } from '../lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import {
   Car, AlertTriangle, CheckCircle2, Clock, TrendingUp, ClipboardCheck,
   UserPlus, X, User, Lock, ShieldCheck, Pencil, Trash2, Users, Bell,
-  FileText, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Calendar as CalendarIcon, Eye
+  FileText, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Calendar as CalendarIcon, Eye, Droplets
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ToastContainer, useToast } from './Toast';
@@ -40,7 +40,6 @@ const RoleBadge = ({ role }: { role: string }) =>
   );
 
 // ─── Modal Wrapper ─────────────────────────────────────────────────────────────
-
 const ModalWrapper: React.FC<{ show: boolean; onClose: () => void; children: React.ReactNode }> = ({ show, onClose, children }) => (
   <AnimatePresence>
     {show && (
@@ -56,6 +55,8 @@ const ModalWrapper: React.FC<{ show: boolean; onClose: () => void; children: Rea
     )}
   </AnimatePresence>
 );
+
+const ALERT_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -103,6 +104,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [resolvingChecklist, setResolvingChecklist] = useState<string | null>(null);
   const [resolveItems, setResolveItems] = useState<Record<string, { ok: boolean; notes: string }>>({});
   const [resolveLoading, setResolveLoading] = useState(false);
+  const [oilChanges, setOilChanges] = useState<OilChange[]>([]);
 
   // ── Fetch ────────────────────────────────────────────────────────────────────
 
@@ -111,18 +113,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       setStats({ totalVehicles: 4, activeVehicles: 2, pendingDamages: 2, recentChecklists: 5 });
       setVehicles(MOCK_V); return;
     }
-    const [{ count: tv }, { count: av }, { count: pd }, { count: rc }, { data: dms }, { data: vs }] = await Promise.all([
+    const [{ count: tv }, { count: av }, { count: pd }, { count: rc }, { data: dms }, { data: vs }, { data: ocs }] = await Promise.all([
       supabase.from('vehicles').select('*', { count: 'exact', head: true }),
       supabase.from('vehicles').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       supabase.from('damages').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('checklists').select('*', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
       supabase.from('damages').select('*, vehicles(brand, model)').order('created_at', { ascending: false }).limit(5),
       supabase.from('vehicles').select('*'),
+      supabase.from('vehicle_oil_changes').select('*, vehicles(brand, model, plate), profiles(full_name)').order('created_at', { ascending: false })
     ]);
     setStats({ totalVehicles: tv || 0, activeVehicles: av || 0, pendingDamages: pd || 0, recentChecklists: rc || 0 });
     setRecentDamages(dms as any || []);
     setVehicles(vs || []);
-  }, []);
+    setOilChanges(ocs as any || []);
+
+    // Check for overdue oil changes to play alert sound
+    if (ocs && profile?.role === 'supervisor') {
+      const hasOverdue = (ocs as OilChange[]).some(oc => {
+        const v = (vs || []).find(v => v.id === oc.vehicle_id);
+        if (!v) return false;
+        const kmLeft = oc.next_change_mileage - v.mileage;
+        const nextDate = new Date(oc.next_change_date);
+        const isDateOverdue = nextDate.getTime() <= Date.now();
+        return kmLeft <= 0 || isDateOverdue;
+      });
+
+      if (hasOverdue) {
+        const audio = new Audio(ALERT_SOUND_URL);
+        audio.volume = 0.4;
+        audio.play().catch(e => console.log('Audio play blocked:', e));
+      }
+    }
+  }, [profile?.role]);
 
   const fetchUsers = useCallback(async () => {
     if (!isSupabaseConfigured) return;
@@ -585,15 +607,188 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   };
 
-  // ── Chart ──────────────────────────────────────────────────────────────────────
-
   const chartData = [
     { name: 'Ativos', value: stats.activeVehicles, color: '#10b981' },
     { name: 'Manutenção', value: stats.totalVehicles - stats.activeVehicles, color: '#f59e0b' },
     { name: 'Avarias', value: stats.pendingDamages, color: '#ef4444' },
   ];
 
-  // ── Checklist Card ─────────────────────────────────────────────────────────────
+  const renderOilChangeMural = () => {
+    // Get latest oil change for each vehicle
+    const latestChanges = vehicles.map(v => {
+      const vChanges = oilChanges.filter(oc => oc.vehicle_id === v.id)
+        .sort((a, b) => new Date(b.change_date).getTime() - new Date(a.change_date).getTime());
+      return { vehicle: v, lastChange: vChanges[0] };
+    }).filter(item => item.lastChange);
+
+    // Sort by proximity to next change (km left)
+    const sorted = latestChanges.sort((a, b) => {
+      const leftA = a.lastChange.next_change_mileage - a.vehicle.mileage;
+      const leftB = b.lastChange.next_change_mileage - b.vehicle.mileage;
+      return leftA - leftB;
+    });
+
+    const calculateDaysRemaining = (dateStr: string) => {
+      const today = new Date();
+      const nextDate = new Date(dateStr);
+      const diffTime = nextDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    };
+
+    return (
+      <div className="bg-slate-900 rounded-2xl border border-primary-500/30 shadow-2xl overflow-hidden shadow-primary-500/5 h-full flex flex-col min-h-[400px]">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-primary-500/10 shrink-0">
+          <div className="p-2 bg-primary-500/20 text-primary-400 rounded-xl"><Droplets size={18} /></div>
+          <h3 className="text-base font-bold text-white">Próximas Trocas de Óleo</h3>
+          <span className="ml-auto text-xs font-bold bg-primary-500/10 border border-primary-500/20 text-primary-400 px-2.5 py-1 rounded-full">{sorted.length}</span>
+        </div>
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto overflow-x-hidden scrollbar-dark flex-1">
+          {sorted.length === 0 ? (
+            <div className="text-center py-8 text-slate-500 text-sm lg:col-span-3">Nenhum registro de troca de óleo.</div>
+          ) : (
+            sorted.map(({ vehicle, lastChange }) => {
+              const kmLeft = lastChange.next_change_mileage - vehicle.mileage;
+              const daysLeft = calculateDaysRemaining(lastChange.next_change_date);
+
+              const isKmOverdue = kmLeft <= 0;
+              const isDateOverdue = daysLeft <= 0;
+              const isOverdue = isKmOverdue || isDateOverdue;
+
+              const isUrgent = (kmLeft <= 500 && kmLeft > 0) || (daysLeft <= 5 && daysLeft > 0);
+
+              const progress = Math.min(100, Math.max(0, (vehicle.mileage / lastChange.next_change_mileage) * 100));
+
+              return (
+                <div key={vehicle.id} className={`group relative rounded-2xl border flex flex-col transition-all duration-300 hover:scale-[1.02] transform-gpu overflow-hidden ${isOverdue ? 'bg-red-500/20 border-red-500 shadow-xl shadow-red-500/20 animate-pulse-red' : isUrgent ? 'bg-amber-500/20 border-amber-500 shadow-xl shadow-amber-500/20 animate-glow-amber' : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/60'}`}>
+
+                  {/* Animation for overdue and urgent cards */}
+                  {(isOverdue || isUrgent) && (
+                    <style dangerouslySetInnerHTML={{
+                      __html: `
+                      @keyframes pulse-red {
+                        0% { background-color: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); }
+                        50% { background-color: rgba(239, 68, 68, 0.3); border-color: rgba(239, 68, 68, 0.9); box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+                        100% { background-color: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); }
+                      }
+                      @keyframes glow-amber {
+                        0% { border-color: rgba(245, 158, 11, 0.3); box-shadow: 0 0 5px rgba(245, 158, 11, 0.1); }
+                        50% { border-color: rgba(245, 158, 11, 0.7); box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+                        100% { border-color: rgba(245, 158, 11, 0.3); box-shadow: 0 0 5px rgba(245, 158, 11, 0.1); }
+                      }
+                      .animate-pulse-red {
+                        animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                      }
+                      .animate-glow-amber {
+                        animation: glow-amber 3s ease-in-out infinite;
+                      }
+                    `}} />
+                  )}
+
+                  {/* Vehicle Image Header */}
+                  <div className="relative h-32 w-full overflow-hidden bg-slate-800">
+                    {vehicle.photo_url ? (
+                      <img src={vehicle.photo_url} alt={vehicle.model} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-800">
+                        <Car size={32} className="text-slate-600" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent" />
+                    <div className="absolute bottom-3 left-3">
+                      <p className="text-sm font-bold text-white mb-0.5 truncate capitalize font-headings drop-shadow-md">
+                        {vehicle.model.toLowerCase()} <span className="text-[10px] font-normal text-slate-300">/ {vehicle.brand.toLowerCase()}</span>
+                      </p>
+                      <p className="text-[10px] font-mono text-primary-400 bg-slate-900/50 backdrop-blur-sm px-1.5 py-0.5 rounded border border-white/10 inline-block uppercase tracking-wider">
+                        {vehicle.plate}
+                      </p>
+                    </div>
+                    {isOverdue && (
+                      <div className="absolute top-3 right-3 bg-red-600 text-white text-[9px] font-black px-2 py-1 rounded shadow-lg animate-pulse">
+                        VENCIDO
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 space-y-4">
+                    {/* Mileage Info */}
+                    <div className="flex justify-between items-end">
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Status de Quilometragem</p>
+                        <div className={`text-lg font-black tracking-tighter ${isOverdue ? 'text-red-400' : isUrgent ? 'text-amber-400' : 'text-primary-400'}`}>
+                          {kmLeft <= 0 ? (
+                            <span>Vencido {Math.abs(kmLeft).toLocaleString()}km</span>
+                          ) : (
+                            <span>Faltam {kmLeft.toLocaleString()}km</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] text-slate-500 uppercase font-bold">Próxima Troca</p>
+                        <p className="text-xs font-bold text-white">{lastChange.next_change_mileage.toLocaleString()}km</p>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="space-y-1.5">
+                      <div className="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden border border-slate-700/50">
+                        <div
+                          className={`h-full transition-all duration-1000 ease-out rounded-full ${isOverdue ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : isUrgent ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-primary-500 shadow-[0_0_8px_rgba(21,160,133,0.5)]'}`}
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Maintenance Details */}
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800/50">
+                      <div className="space-y-0.5">
+                        <p className="text-[9px] text-slate-500 uppercase font-bold">Última Troca</p>
+                        <p className="text-[11px] font-bold text-slate-300">{lastChange.current_mileage.toLocaleString()} km</p>
+                        <p className="text-[9px] text-slate-500">{new Date(lastChange.change_date).toLocaleDateString()}</p>
+                      </div>
+                      <div className="space-y-0.5 text-right">
+                        <p className="text-[9px] text-slate-500 uppercase font-bold">Próxima Data</p>
+                        <p className="text-[11px] font-bold text-slate-300">{new Date(lastChange.next_change_date).toLocaleDateString()}</p>
+                        <p className={`text-[9px] font-bold ${daysLeft <= 7 ? 'text-red-400' : daysLeft <= 30 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          {daysLeft <= 0 ? 'Data vencida' : `Faltam ${daysLeft} dias`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Responsible Driver */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-800/50">
+                      <div className="p-1.5 bg-slate-800 rounded-lg">
+                        <User size={12} className="text-slate-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] text-slate-500 uppercase font-bold">Registrado por</p>
+                        <p className="text-[11px] font-bold text-primary-400 truncate">{lastChange.profiles?.full_name || 'Sistema'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+        <div className="p-3 bg-slate-800/40 border-t border-slate-800 flex items-center justify-between shrink-0">
+          <p className="text-[10px] text-slate-500 flex items-center gap-1.5">
+            <Clock size={12} /> Atualizado em tempo real
+          </p>
+          <div className="flex gap-2">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-red-500"></div>
+              <span className="text-[9px] text-slate-400 font-bold uppercase italic">Crítico</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+              <span className="text-[9px] text-slate-400 font-bold uppercase italic">Atenção</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderChecklistCard = (cl: ChecklistRecord, isSupervisor?: boolean) => {
     const expanded = expandedChecklist === cl.id;
@@ -787,7 +982,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           ))}
         </div>
 
-        {/* Chart + Damages */}
+        {/* Top Content: Chart + Relatórios */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
@@ -807,8 +1002,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Relatórios */}
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col relative">
+          <div className="lg:col-span-1 bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col relative">
             <div className="absolute top-0 right-0 w-40 h-40 bg-primary-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
             <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-primary-500/5">
               <div className="p-2 bg-primary-500/10 border border-primary-500/20 text-primary-400 rounded-xl">
@@ -816,28 +1010,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </div>
               <h3 className="text-base font-bold text-white">Relatórios</h3>
             </div>
-            <div className="flex-1 flex flex-col items-center justify-center py-10 px-6 text-center gap-4">
+            <div className="flex-1 flex flex-col items-center justify-center py-6 px-6 text-center gap-4">
               <div className="w-16 h-16 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center">
                 <FileText size={28} className="text-primary-400 opacity-80" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-300">Relatório Geral do Sistema</p>
-                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Emita um relatório completo contendo o resumo da frota, consumos e ocorrências.</p>
+                <p className="text-sm font-bold text-slate-300">Relatório Geral</p>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed truncate px-2">Resumo completo da frota e ocorrências.</p>
               </div>
 
               {latestMonthly && (
-                <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl p-3 mb-4 shadow-lg shadow-emerald-500/5 flex items-center justify-between gap-3 overflow-hidden relative">
+                <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl p-3 mb-2 shadow-lg shadow-emerald-500/5 flex items-center justify-between gap-3 overflow-hidden relative w-full">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-                  <div className="flex items-center gap-3 relative z-10">
+                  <div className="flex items-center gap-3 relative z-10 min-w-0">
                     <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg shrink-0 border border-emerald-500/30">
                       <FileText size={18} />
                     </div>
-                    <div className="text-left">
-                      <h4 className="text-emerald-400 font-bold text-[13px] flex items-center gap-1.5 mb-0.5">
-                        Relatório Mensal
-                        <span className="bg-emerald-500 text-white text-[9px] uppercase font-black px-1.5 py-0.5 rounded animate-pulse">NOVO</span>
-                      </h4>
-                      <p className="text-slate-400 text-[11px] font-medium leading-none">Auto-gerado de {latestMonthly.month_key}</p>
+                    <div className="text-left truncate">
+                      <h4 className="text-emerald-400 font-bold text-[13px] mb-0.5">Mensal</h4>
+                      <p className="text-slate-400 text-[10px] font-medium leading-none truncate">{latestMonthly.month_key}</p>
                     </div>
                   </div>
                   <button
@@ -846,22 +1037,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       window.dispatchEvent(event);
                       if (onNavigate) onNavigate('reports');
                     }}
-                    className="relative z-10 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:border-emerald-500/50 rounded-lg text-[11px] tracking-wide font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-sm"
+                    className="relative z-10 px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[10px] font-bold transition-all shrink-0"
                   >
-                    <Eye size={14} /> Abrir
+                    Abrir
                   </button>
                 </div>
               )}
 
               <button
                 onClick={() => setShowDatePicker(true)}
-                className="mt-2 w-full py-3 bg-primary-600 hover:bg-primary-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary-900/50 flex flex-col items-center justify-center gap-1"
+                className="w-full py-3 bg-primary-600 hover:bg-primary-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary-900/50 flex flex-col items-center justify-center gap-1"
               >
-                <span>Gerar Relatório Geral</span>
-                <span className="text-[10px] font-medium text-primary-200">Pronto para Impressão / PDF</span>
+                <span>Gerar Relatório</span>
+                <span className="text-[10px] font-medium text-primary-200">Pronto para PDF</span>
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Oil Change Mural: Full width row below chart */}
+        <div className="w-full">
+          {renderOilChangeMural()}
         </div>
 
         {/* Supervisor Damage History - full width standalone */}
@@ -1057,8 +1253,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </button>
           </form>
         </ModalWrapper>
-
-        {/* EDIT MODAL */}
         <ModalWrapper show={!!editTarget} onClose={() => setEditTarget(null)}>
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-2xl"><Pencil size={24} /></div>
@@ -1196,7 +1390,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
         {/* Report Overlay Component */}
         {showReport && <SystemReport onClose={() => setShowReport(false)} />}
-      </div >
+      </div>
     );
   }
 

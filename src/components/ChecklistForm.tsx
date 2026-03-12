@@ -153,6 +153,24 @@ export const ChecklistForm: React.FC<{ initialVehicleId?: string }> = ({ initial
         type: 'checklist'
       }]);
 
+      // 6. Manual Audit Log (Consolidated)
+      const okItems = Object.entries(items).filter(([_, data]) => (data as any).ok).map(([name]) => name);
+      const pendingItems = Object.entries(items).filter(([_, data]) => !(data as any).ok).map(([name, data]) => `${name}: ${(data as any).notes}`);
+
+      await supabase.from('audit_logs').insert([{
+        user_id: profile.id,
+        user_email: profile.email,
+        action: 'INSERT',
+        table_name: 'checklists',
+        record_id: checklist.id,
+        new_data: {
+          vehicle: selectedVehicleData?.plate,
+          status: isAllOk ? 'resolved' : 'pending',
+          items_concluded: okItems,
+          items_pending: pendingItems
+        }
+      }]);
+
       setSuccess(true);
       addToast('Checklist enviado com sucesso! Bom trabalho.', 'success');
     } catch (error: any) {

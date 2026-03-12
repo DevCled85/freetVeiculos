@@ -89,6 +89,7 @@ export type AppVersion = {
   created_at: string;
 };
 
+
 export type AuditLog = {
   id: string;
   user_id?: string;
@@ -104,10 +105,12 @@ export type AuditLog = {
 export type OilChange = {
   id: string;
   vehicle_id: string;
+  driver_id?: string;
   current_mileage: number;
   next_change_mileage: number;
   change_date: string;
   next_change_date: string;
   created_at: string;
   is_super_data?: boolean;
+  profiles?: { full_name: string };
 };
