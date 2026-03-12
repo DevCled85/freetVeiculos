@@ -311,9 +311,9 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                 <div className="rounded-xl border border-slate-200">
                                     <table className="w-full sm:table-fixed text-left">
                                         <colgroup className="print:hidden">
-                                            <col className="w-[80px] sm:w-[110px]" />
-                                            <col />
-                                            <col className="w-[100px] sm:w-[180px]" />
+                                            <col className="w-[30%] sm:w-[110px]" />
+                                            <col className="w-[35%] sm:auto" />
+                                            <col className="w-[35%] sm:w-[180px]" />
                                         </colgroup>
                                         <colgroup className="hidden print:table-column-group">
                                             <col className="w-[100px]" />
@@ -386,9 +386,9 @@ export const SystemReport: React.FC<SystemReportProps> = ({ preloadedData, onClo
                                 <div className="rounded-xl border border-slate-200">
                                     <table className="w-full sm:table-fixed text-left">
                                         <colgroup className="print:hidden">
-                                            <col className="w-[80px] sm:w-[120px]" />
-                                            <col />
-                                            <col className="w-[80px] sm:w-[140px]" />
+                                            <col className="w-[30%] sm:w-[120px]" />
+                                            <col className="w-[40%] sm:auto" />
+                                            <col className="w-[30%] sm:w-[140px]" />
                                         </colgroup>
                                         <colgroup className="hidden print:table-column-group">
                                             <col className="w-[110px]" />
