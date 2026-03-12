@@ -10,7 +10,8 @@ import {
   XCircle,
   Upload,
   Car,
-  X
+  X,
+  Droplets
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast, ToastContainer } from './Toast';
@@ -74,6 +75,7 @@ export const VehicleList: React.FC = () => {
   });
   const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
   const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
+  const [showOilModal, setShowOilModal] = useState<Vehicle | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
@@ -304,6 +306,13 @@ export const VehicleList: React.FC = () => {
                   className="text-slate-500 hover:text-primary-400 transition-colors"
                 >
                   <Edit2 size={18} />
+                </button>
+                <button
+                  onClick={() => setShowOilModal(v)}
+                  className="text-slate-500 hover:text-amber-400 transition-colors"
+                  title="Troca de Óleo"
+                >
+                  <Droplets size={18} />
                 </button>
                 <button
                   onClick={() => setDeletingId(v.id)}
@@ -550,6 +559,164 @@ export const VehicleList: React.FC = () => {
           </>
         )}
       </AnimatePresence>
+      {/* Oil Change Modal */}
+      <AnimatePresence>
+        {showOilModal && (
+          <OilChangeModal
+            vehicle={showOilModal}
+            onClose={() => setShowOilModal(null)}
+            addToast={addToast}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+};
+
+// --- Oil Change Modal Component ---
+const OilChangeModal: React.FC<{
+  vehicle: Vehicle,
+  onClose: () => void,
+  addToast: (msg: string, type: 'success' | 'error' | 'info') => void
+}> = ({ vehicle, onClose, addToast }) => {
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState({
+    current_mileage: vehicle.mileage,
+    next_change_mileage: vehicle.mileage + 10000,
+    change_date: new Date().toISOString().split('T')[0],
+    next_change_date: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { error } = await supabase
+      .from('vehicle_oil_changes')
+      .insert([{
+        vehicle_id: vehicle.id,
+        current_mileage: data.current_mileage,
+        next_change_mileage: data.next_change_mileage,
+        change_date: data.change_date,
+        next_change_date: data.next_change_date
+      }]);
+
+    if (!error) {
+      // Also update the vehicle's current mileage to match the service mileage if it's higher
+      if (data.current_mileage > vehicle.mileage) {
+        await supabase
+          .from('vehicles')
+          .update({ mileage: data.current_mileage })
+          .eq('id', vehicle.id);
+      }
+
+      addToast('Troca de óleo registrada com sucesso!', 'success');
+      onClose();
+    } else {
+      addToast('Erro ao registrar troca de óleo: ' + error.message, 'error');
+    }
+    setLoading(false);
+  };
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80]"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-[90] overflow-hidden"
+      >
+        <div className="p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+                <Droplets size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-white">Troca de Óleo</h3>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+              <X size={24} />
+            </button>
+          </div>
+
+          <div className="mb-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Veículo</p>
+            <p className="text-sm font-bold text-white uppercase">{vehicle.model} / {vehicle.brand} ({vehicle.plate})</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">KM desta Troca</label>
+                <input
+                  type="number"
+                  required
+                  value={data.current_mileage}
+                  onChange={e => setData(prev => ({ ...prev, current_mileage: parseInt(e.target.value) }))}
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">KM da Próxima</label>
+                <input
+                  type="number"
+                  required
+                  value={data.next_change_mileage}
+                  onChange={e => setData(prev => ({ ...prev, next_change_mileage: parseInt(e.target.value) }))}
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Data da Troca</label>
+                <input
+                  type="date"
+                  required
+                  value={data.change_date}
+                  onChange={e => setData(prev => ({ ...prev, change_date: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Data da Próxima</label>
+                <input
+                  type="date"
+                  required
+                  value={data.next_change_date}
+                  onChange={e => setData(prev => ({ ...prev, next_change_date: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold border border-slate-700 rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
+              >
+                {loading ? 'Sincronizando...' : 'Registrar'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </>
   );
 };

@@ -100,3 +100,14 @@ export type AuditLog = {
   new_data?: any;
   created_at: string;
 };
+
+export type OilChange = {
+  id: string;
+  vehicle_id: string;
+  current_mileage: number;
+  next_change_mileage: number;
+  change_date: string;
+  next_change_date: string;
+  created_at: string;
+  is_super_data?: boolean;
+};
