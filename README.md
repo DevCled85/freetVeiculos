@@ -1,6 +1,7 @@
 <div align="center">
   <img src="./src/medias/logo_vidronox.jpg" width="180" alt="FleetCheck Logo"/>
   <h1>FleetCheck - Controle Avançado de Frota</h1>
+  <p>🚀 <strong>Link de Produção:</strong> <a href="https://DevCled85.github.io/freetVeiculos">https://DevCled85.github.io/freetVeiculos</a></p>
 </div>
 
 FleetCheck é um sistema completo e moderno para a gestão de veículos, checklists diários e controle de avarias, idealizado para operações logísticas críticas (como frotas de entrega, serviços em campo e vidraçarias). Construído seguindo fortes princípios de UI/UX contemporâneos (Glassmorphism e Dark Mode dinâmico), combinando performance de frontend de última geração com um backend realtime em nuvem.
@@ -10,6 +11,10 @@ FleetCheck é um sistema completo e moderno para a gestão de veículos, checkli
 ## 🚀 Funcionalidades Principais
 
 - **Dashboard Administrativo**: Visão panóptica de toda a frota, métricas em tempo real, avarias pendentes, veículos ativos e checklists recentes através de gráficos dinâmicos e cards modulares.
+- **Módulo de Manutenção Preventiva (Mural de Óleo)**: Sistema avançado de monitoramento de trocas de óleo com alerta proativo:
+  - **Alerta Crítico (Vermelho Pulsante)**: Ativado quando a quilometragem ou data de troca está vencida, acompanhado de sinal sonoro automático para o supervisor.
+  - **Alerta de Atenção (Glow Amarelado)**: Sinaliza veículos próximos da manutenção para planejamento antecipado.
+  - **Cards Técnicos Premium**: Exibição da foto do veículo, quilometragem da última troca, responsável pelo registro, previsão de data e progresso visual.
 - **Gerador de Relatórios Avançados (PDF)**: Motor de relatórios configuráveis com filtros de data granulares, gerando PDFs profissionais com histórico de checklists, abastecimentos e avarias estruturados para impressão.
 - **Histórico e Relatórios Mensais**: Repositório centralizado de relatórios salvos e geração automática pelo sistema ao final de cada mês, garantindo backup histórico da operação sem esforço manual.
 - **Gestão de Perfil Segura**: Motoristas e Supervisores possuem áreas de perfis próprios com controle de foto (Uploads para cloud storage), alteração de senha e configuração de WhatsApp para alertas críticos.
